@@ -1,38 +1,51 @@
 """
 Phase 1- TABLET
-1. Light cue 1
-    MAIA LED : OFF 
-    HOUSE LIGHT 1 : ON 100%
-    HOUSE LIGHT 2 : ON 100%
-    CHAIR SPOT : OFF
-    MAIA SPOT 1 : OFF
-    MAIA SPOT 2 : OFF
-    MAIA PROJECTOR 1 : OFF
-    MAIA PROJECTOR 2: OFF
-2. Play music MAJO.WAV at 25% volume
-3. HOST “TABLET UI” LOCALLY
-PLAY AUDIO: PRESHOW_VOICE_1 WAV FILE, on “TABLET UI” 
-IF TABLET PICKED UP, STOP PRESHOW_VOICE_1 WAV FILE
-“Tablet UI” input field, “what can i call you?”; SAVE VALUE TO FIELD: profile_data.NAME
-“Tablet UI” asks, “what calls to you”, user selects color;SAVE VALUE TO FIELD: profile_data.COLOR
-Tablet UI asks, “what calls to you”, user selects signet. SAVE VALUE TO FIELD: profile_data.SIGNET
-Activate button is now show on “TABLET UI” activated
-User presses activate; START Phase 2 - Introduction; OSC INTRO.START SIGNAL TO CHANGE FROM 0 TO 1
-Play music MAJO.WAV at 50% volume
+1.  Light cue 1
+        MAIA LED : OFF 
+        HOUSE LIGHT 1 : ON 100%
+        HOUSE LIGHT 2 : ON 100%
+        CHAIR SPOT : OFF
+        MAIA SPOT 1 : OFF
+        MAIA SPOT 2 : OFF
+        MAIA PROJECTOR 1 : OFF
+        MAIA PROJECTOR 2: OFF
+2.  Play music MAJO.WAV at 25% volume
+3.  HOST “TABLET UI” LOCALLY
+4.  PLAY AUDIO: PRESHOW_VOICE_1 WAV FILE, on “TABLET UI” 
+5.  IF TABLET PICKED UP, STOP PRESHOW_VOICE_1 WAV FILE
+6.  “Tablet UI” input field, “what can i call you?”; SAVE VALUE TO FIELD: profile_data.NAME
+7.  “Tablet UI” asks, “what calls to you”, user selects color;SAVE VALUE TO FIELD: profile_data.COLOR
+8.  Tablet UI asks, “what calls to you”, user selects signet. SAVE VALUE TO FIELD: profile_data.SIGNET
+9.  Activate button is now show on “TABLET UI” activated
+10. User presses activate; START Phase 2 - Introduction; OSC INTRO.START SIGNAL TO CHANGE FROM 0 TO 1
+11. Play music MAJO.WAV at 50% volume
 
 """
-
 
 import asyncio
 from fastapi import APIRouter
 from pythonosc.udp_client import SimpleUDPClient
+import json
+import os
 
 router = APIRouter()
+USER_USER_DATA_FILE = "user_data.json"
 
-# OSC Client Setup
 OSC_IP = "127.0.0.1"
 OSC_PORT = 7400
 client = SimpleUDPClient(OSC_IP, OSC_PORT)
+
+def load_user_data():
+    try:
+        with open(USER_USER_DATA_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+# Save user data
+def save_user_data(data):
+    with open(USER_USER_DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
 @router.post("/start_tablet")
 async def start_tablet_phase():
@@ -63,23 +76,14 @@ async def start_tablet_phase():
 
 @router.post("/save_user")
 async def save_user(user_data: dict):
-    print(f"User Data Saved: {user_data}")
-    # Save to a local JSON file or in-memory database
-    with open("user_data.json", "w") as f:
-        import json
-        json.dump(user_data, f)
+    """Save user data locally to be retrieved later."""
+    users = load_user_data()
+    user_id = "latest_user"
+    if user_id in users:
+        users[user_id].update(user_data)  
+    else:
+        users[user_id] = user_data
 
-    return {"message": "User data saved successfully"}
-
-# API endpoint to activate Phase 2 (Introduction)
-@router.post("/activate")
-async def activate():
-    print("✅ Activating Phase 2: Introduction")
+    save_user_data(users)
     
-    # Send OSC signal to MAX MSP
-    client.send_message("/phase/intro", 1)
-    
-    # Increase music volume to 50%
-    client.send_message("/audio/play", ["Majo.mp3", 0.50])
-
-    return {"message": "Phase 2 started"}
+    return {"message": "User data saved successfully", "user": users[user_id]}
