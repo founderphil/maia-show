@@ -4,24 +4,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function TabletUI() {
-  const [name, setName] = useState("");
+  const [userName, setUserName] = useState("");
   const router = useRouter();
 
   const handleCapture = async () => {
-    if (!name.trim()) {
+    if (!userName.trim()) {
       alert("Please enter a name.");
       return;
     }
 
-    // Save name & send to backend
-    await fetch("/api/save_user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
+    try {
+      const response = await fetch("/api/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pathname: "/save_user",
+          body: { userName },
+        }),
+      });
 
-    sessionStorage.setItem("userName", name);
-    router.push("/tablet/color");
+      const result = await response.json();
+      console.log("User saved:", result);
+
+      sessionStorage.setItem("userName", userName);
+      router.push("/tablet/color");
+    } catch (error) {
+      console.error("Failed to save user:", error);
+    }
   };
 
   return (
@@ -29,13 +38,14 @@ export default function TabletUI() {
       <h1 className="text-2xl font-bold mb-4">What do I call you?</h1>
       <input
         type="text"
-        id="nameInput"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        value={userName}
+        onChange={(e) => setUserName(e.target.value)}
         placeholder="Who is this..."
-        className="text-black p-2 rounded"
+        className="p-2 rounded mb-4 w-64 text-white border-b border-white border-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
       />
-      <button onClick={handleCapture} className="mt-4 px-4 py-2 bg-purple-500 rounded">Capture</button>
+      <button onClick={handleCapture} className="mt-4 px-4 py-2 bg-purple-500 rounded">
+        Capture
+      </button>
     </div>
   );
 }

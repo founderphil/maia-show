@@ -8,12 +8,13 @@ import asyncio
 from backend.api.routes import router as api_router
 from backend.api.phases import tablet_phase
 from fastapi.middleware.cors import CORSMiddleware
-
+from backend.api.postshow import router as postshow_router
 
 app = FastAPI()
 
 app.include_router(api_router, prefix="/api")
 app.include_router(tablet_phase.router, prefix="/api")
+app.include_router(postshow_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,8 +25,8 @@ app.add_middleware(
 )
 
 # OSC Client Setup
-OSC_IP = "127.0.0.1"  # IP MAX is running on
-OSC_PORT = 7400  # Port for MAX
+OSC_IP = "127.0.0.1"  
+OSC_PORT = 7400  
 osc_client = SimpleUDPClient(OSC_IP, OSC_PORT)
 clients = []
 # OSC Message Handler
@@ -79,7 +80,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         clients.remove(websocket)
 
-# ✅ Function to broadcast messages to all clients
+# Broadcast function
 async def broadcast(message: dict):
     for client in clients:
         try:
