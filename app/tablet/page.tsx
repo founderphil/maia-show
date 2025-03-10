@@ -1,11 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function TabletUI() {
   const [userName, setUserName] = useState("");
   const router = useRouter();
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const newAudio = new Audio("/audio/tablet_audio.wav");
+    newAudio.loop = true;
+    newAudio.volume = 1;
+    setAudio(newAudio);
+
+    return () => {
+      newAudio.pause();
+      newAudio.currentTime = 0;
+    };
+  }, []);
+
+  const handlePlayAudio = () => {
+    if (audio) {
+      audio.play().catch((error) => console.log("Autoplay blocked:", error));
+    }
+  };
 
   const handleCapture = async () => {
     if (!userName.trim()) {
@@ -34,7 +53,16 @@ export default function TabletUI() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white relative">
+      {/* Audio Play Button (Absolute Upper-Left Corner) */}
+      <button
+        onClick={handlePlayAudio}
+        className="absolute top-0 left-0 bg-gray-900 text-gray-800 px-3 py-2 text-xs rounded border-gray"
+        style={{ zIndex: 1000, width: "25px", height: "25px", opacity: 0.3 }}
+      >
+        play
+      </button>
+
       <h1 className="text-2xl font-bold mb-4">What do I call you?</h1>
       <input
         type="text"
