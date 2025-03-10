@@ -10,7 +10,7 @@ npm run dev
 
 run frontend:
 ```bash
-python -m uvicorn backend.main:app --reload
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
    - Local:        http://localhost:3000
    - Network:      http://192.168.1.165:3000

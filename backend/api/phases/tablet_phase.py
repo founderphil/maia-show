@@ -23,13 +23,13 @@ Phase 1- TABLET
 """
 
 import asyncio
+import json
 from fastapi import APIRouter
 from pythonosc.udp_client import SimpleUDPClient
-import json
-import os
+from backend.api.websocket_manager import ws_manager
 
 router = APIRouter()
-USER_USER_DATA_FILE = "user_data.json"
+USER_DATA_FILE = "user_data.json"
 
 OSC_IP = "127.0.0.1"
 OSC_PORT = 7400
@@ -37,53 +37,44 @@ client = SimpleUDPClient(OSC_IP, OSC_PORT)
 
 def load_user_data():
     try:
-        with open(USER_USER_DATA_FILE, "r") as f:
+        with open(USER_DATA_FILE, "r") as f:
             return json.load(f)
     except FileNotFoundError:
         return {}
 
-# Save user data
 def save_user_data(data):
-    with open(USER_USER_DATA_FILE, "w") as f:
+    with open(USER_DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-@router.post("/start_tablet")
+router.post("/start_tablet")
 async def start_tablet_phase():
     print("🚀 Starting Phase 1: Tablet")
 
-    # Cue 1: Set initial lighting state
-    print("Go Light Cue 1")
-    client.send_message("/lighting/maiaLED", float(0))
-    client.send_message("/lighting/houseLight1", float(100))
-    client.send_message("/lighting/houseLight2", float(100))
-    client.send_message("/lighting/chairSpot", float(0))
-    client.send_message("/lighting/maiaSpot1", float(0))
-    client.send_message("/lighting/maiaSpot2", float(0))
-    client.send_message("/lighting/maiaProjector1", float(0))
-    client.send_message("/lighting/maiaProjector2", float(0))
+    print("🎭 Sending Lighting Cues to MAX MSP")
+    client.send_message("/lighting/maiaLED", 0)
+    client.send_message("/lighting/houseLight1", 100)
+    client.send_message("/lighting/houseLight2", 100)
+    client.send_message("/lighting/chairSpot", 0)
+    client.send_message("/lighting/maiaSpot1", 0)
+    client.send_message("/lighting/maiaSpot2", 0)
+    client.send_message("/lighting/maiaProjector1", 0)
+    client.send_message("/lighting/maiaProjector2", 0)
 
-    await asyncio.sleep(1) 
+    await asyncio.sleep(1)
 
-    # Cue 2: Play Music at 25%
-    print("Go Music Cue 1")
-    client.send_message("/audio/play", ["Majo.mp3", float(0.25)])
+    # ✅ Send Music Command to MAX MSP
+    print("🎵 Playing Majo.mp3 at 25% volume in MAX MSP")
+    client.send_message("/audio/play", ["Majo.mp3", 0.25])
 
-    # Cue 3: Open Tablet UI
-    print("Go Reset Tablet to 1")
-    client.send_message("/ui/open", "tablet") #maybe this is not needed
+@router.post("/activate")
+async def activate():
+    """Final step when user presses 'Activate' in Tablet UI."""
+    print("✨ User pressed Activate! Advancing to Phase 2 - Introduction.")
 
-    return {"message": "Tablet Phase Started"}
+    # ✅ Increase Music Volume via MAX MSP
+    client.send_message("/audio/soundtrack", ["Majo.mp3", 1])
 
-@router.post("/save_user")
-async def save_user(user_data: dict):
-    """Save user data locally to be retrieved later."""
-    users = load_user_data()
-    user_id = "latest_user"
-    if user_id in users:
-        users[user_id].update(user_data)  
-    else:
-        users[user_id] = user_data
+    # ✅ Send OSC to trigger phase change in MAX MSP
+    client.send_message("/phase/start", "intro")
 
-    save_user_data(users)
-    
-    return {"message": "User data saved successfully", "user": users[user_id]}
+    return {"message": "Phase 2 - Introduction Started"}

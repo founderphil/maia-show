@@ -32,12 +32,25 @@ Phase 3 - LORE
 
 """
 
-import asyncio
 from fastapi import APIRouter
+import asyncio
 from pythonosc.udp_client import SimpleUDPClient
 
 router = APIRouter()
 
+# OSC Client Setup
 OSC_IP = "127.0.0.1"
 OSC_PORT = 7400
 client = SimpleUDPClient(OSC_IP, OSC_PORT)
+
+@router.post("/start_lore")
+async def start_lore_phase():
+    print("🚀 Starting Phase 3: Lore")
+
+    # Send OSC signal to MAX MSP
+    client.send_message("/phase/lore", 1)
+
+    # Simulate a delay for transition
+    await asyncio.sleep(1)
+
+    return {"message": "Lore Phase Started"}

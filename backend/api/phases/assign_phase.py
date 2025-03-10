@@ -51,3 +51,27 @@ Phase 4 - ASSIGNMENT (a quiz where querents are deemed worthy to become a guardi
     -Preprocess text to include data profile_data.name 
     -Send text to TTS. “This noble work is the light you need to continue to spread throughout. This comes from your SOL and makes you exceptional. Continue to spread that light!”
 """
+
+from fastapi import APIRouter
+import asyncio
+from pythonosc.udp_client import SimpleUDPClient
+
+router = APIRouter()
+
+# OSC Client Setup
+OSC_IP = "127.0.0.1"
+OSC_PORT = 7400
+client = SimpleUDPClient(OSC_IP, OSC_PORT)
+
+@router.post("/start_assign")
+async def start_assign_phase():
+    """Handles the Assign phase transition."""
+    print("📜 Starting Phase 4: Assignment")
+
+    # Send OSC signal to MAX MSP
+    client.send_message("/phase/asign", 1)
+
+    # Simulate a delay for transition
+    await asyncio.sleep(1)
+
+    return {"message": "Assignment Phase Started"}

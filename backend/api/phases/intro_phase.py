@@ -30,11 +30,56 @@ Phase 2 - INTRODUCTION
 """
 
 import asyncio
+import json
 from fastapi import APIRouter
-from pythonosc.udp_client import SimpleUDPClient
+from backend.api.pipelines.inference import run_cv2stt_llm_tts
+from backend.api.pipelines.tts_only import  run_tts_only
+from backend.utils.utils import clients, osc_client, broadcast, ws_manager
 
 router = APIRouter()
 
-OSC_IP = "127.0.0.1"
-OSC_PORT = 7400
-client = SimpleUDPClient(OSC_IP, OSC_PORT)
+@router.post("/start_intro")
+async def start_intro_phase():
+    """Handles the introduction phase, triggering AI inference."""
+    print("🚀 Starting Phase 2: Introduction")
+
+    # Send OSC signal to MAX MSP
+    osc_client.send_message("/phase/intro", 1)
+
+    # Notify frontend via WebSocket
+    await ws_manager.broadcast({
+        "type": "phase_update",
+        "phase": "intro",
+        "lighting": {
+            "maiaLED": 100,
+            "houseLight1": 50,
+            "houseLight2": 50
+        },
+        "audio": {
+            "voiceover": {"file": "intro_voice.wav", "volume": 1.0}
+        }
+    })
+
+    #welcome
+    ai_results = run_tts_only()
+    # Run AI Pipeline
+    #ai_results = run_cv2stt_llm_tts()
+
+    # Send TTS audio to frontend
+    await broadcast({
+        "type": "tts_audio",
+        "audio_url": ai_results["audio_url"],
+        "transcription": ai_results["transcription"],
+        "llm_response": ai_results["llm_response"]
+    })
+
+    return {"message": "Introduction Phase Started", **ai_results}
+
+
+async def broadcast(message: dict):
+    """Broadcasts messages via WebSocket."""
+    for client in clients:
+        try:
+            await client.send_text(json.dumps(message))
+        except Exception:
+            clients.remove(client)
