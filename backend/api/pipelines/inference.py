@@ -39,7 +39,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_AUDIO_DIR = os.path.join(BASE_DIR, "static/audio/")  
 TTS_DIR = os.path.join(BASE_DIR, "backend/models/stt_tts/")
 SPEAKER_WAV = os.path.join(BASE_DIR, "../../models/stt_tts/patricia_full.wav")
-OUTPUT_FILENAME = "maia_output.wav"
+OUTPUT_FILENAME = "maia_output_general.wav"
 TTS_OUTPUT_PATH = os.path.join(STATIC_AUDIO_DIR, OUTPUT_FILENAME)
 
 def clean_llama_response(output_text: str) -> str:
@@ -58,7 +58,6 @@ def run_cv2stt_llm_tts():
     """Runs the full inference pipeline (Vision + STT + LLM + TTS)."""
     audio_id = str(uuid.uuid4())
     audio_file = f"temp_{audio_id}.wav"
-    tts_output = f"maia_output_{audio_id}.wav"
 
     record_audio(audio_file, record_seconds=5)
 
@@ -101,9 +100,8 @@ def run_cv2stt_llm_tts():
 
     print("Saving TTS audio...")
     
-    # Ensure LLM output isn't empty
     tts_output_path = os.path.join(STATIC_AUDIO_DIR, OUTPUT_FILENAME)
-    tts_output = "maia_output.wav"
+    tts_output = OUTPUT_FILENAME
 
     synthesize_speech(
         text=llm_response,

@@ -62,7 +62,7 @@ async def start_tablet_phase():
 
     await asyncio.sleep(1)
 
-    # ✅ Send Music Command to MAX MSP
+    # request music play in MAX over the speakers - this is a transition of space
     print("🎵 Playing Majo.mp3 at 25% volume in MAX MSP")
     client.send_message("/audio/play", ["Majo.mp3", 0.25])
 
@@ -71,10 +71,10 @@ async def activate():
     """Final step when user presses 'Activate' in Tablet UI."""
     print("✨ User pressed Activate! Advancing to Phase 2 - Introduction.")
 
-    # ✅ Increase Music Volume via MAX MSP
+    # Increase Music Volume via MAX MSP
     client.send_message("/audio/soundtrack", ["Majo.mp3", 1])
 
-    # ✅ Send OSC to trigger phase change in MAX MSP
+    # not sure what i want to tell MAX TODO
     client.send_message("/phase/start", "intro")
 
     return {"message": "Phase 2 - Introduction Started"}

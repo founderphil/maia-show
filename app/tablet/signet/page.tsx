@@ -6,15 +6,33 @@ import { useRouter } from "next/navigation";
 export default function SignetSelection() {
   const [chosenSignet, setChosenSignet] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [ws, setWs] = useState<WebSocket | null>(null);
   const router = useRouter();
 
   useEffect(() => {
+    // Retrieve user name from session storage
     const storedName = sessionStorage.getItem("userName");
     if (!storedName) {
       router.push("/tablet");
       return;
     }
     setUserName(storedName);
+
+    // Initialize WebSocket connection
+    const socket = new WebSocket("ws://localhost:8000/ws");
+
+    socket.onopen = () => {
+      console.log("✅ Connected to WebSocket");
+      setWs(socket);
+    };
+
+    socket.onerror = (error) => {
+      console.error("⚠️ WebSocket Error:", error);
+    };
+
+    return () => {
+      socket.close();
+    };
   }, [router]);
 
   const handleSignetSelect = (signet: string) => {
@@ -27,12 +45,12 @@ export default function SignetSelection() {
       return;
     }
 
-    //Save user signet 
+    // Save user signet
     const response = await fetch("/api/proxy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        pathname: "/save_user", 
+        pathname: "/save_user",
         body: { userName, chosenSignet },
       }),
     });
@@ -40,7 +58,12 @@ export default function SignetSelection() {
     const result = await response.json();
     console.log("User saved:", result);
 
-    // move on to intro
+    // 📡 WebSocket Message to Start Phase 2
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "start_intro" }));
+    }
+
+    // Backup API call to ensure Phase 2 starts
     await fetch("/api/proxy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -50,11 +73,10 @@ export default function SignetSelection() {
     alert("The portal is now open.");
   };
 
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
       <h1 className="text-2xl font-bold mb-4">
-      {userName ? `${userName}, what calls to you?` : "What calls to you?"}
+        {userName ? `${userName}, what calls to you?` : "What calls to you?"}
       </h1>
       <div className="grid grid-cols-3 gap-4">
         {["★", "☀", "✦", "✵", "❖", "✶", "⚝", "❂", "✧"].map((signet) => (

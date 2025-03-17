@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """Handles WebSocket connections and forwards messages."""
-    await ws_manager.connect(websocket)  # ✅ Use WebSocket manager
+    await ws_manager.connect(websocket)  
     try:
         while True:
             data = await websocket.receive_text()
@@ -64,7 +64,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 print(f"🎬 Show Control Command: {command}")
 
                 if command == "play":
-                    await start_full_show()  # ✅ Trigger full show pipeline
+                    await start_full_show() 
                 elif command == "pause":
                     print("⏸️ Pausing show, setting house lights to full.")
                     osc_client.send_message("/lighting/houseLight1", 100)
@@ -73,24 +73,24 @@ async def websocket_endpoint(websocket: WebSocket):
                     print("🔄 Resetting show to Tablet Phase.")
                     await tablet_phase.start_tablet_phase()
 
-            # 💡 Lighting Controls
+            # Lighting Controls
             elif message["type"] == "lighting_update":
                 print(f"Lighting update: {message['light']} -> {message['value']}")
                 osc_client.send_message(f"/lighting/{message['light']}", message["value"])
                 await ws_manager.broadcast({"type": "lighting_status", "light": message["light"], "value": message["value"]})
 
-            # 🤖 AI Pipeline Controls
+            # AI Pipeline Controls
             elif message["type"] == "ai_command":
                 print(f"AI Pipeline Command: {message['pipeline']} -> {message['command']}")
                 osc_client.send_message(f"/ai/{message['pipeline']}", message["command"])
                 await ws_manager.broadcast({"type": "ai_status", "pipeline": message["pipeline"], "status": message["command"]})
 
-            # 🧑 User Data Updates
+            # User Data Updates
             elif message["type"] == "user_data":
                 print(f"User Data: {message['data']}")
                 await ws_manager.broadcast({"type": "user_data_received", "data": message["data"]})
 
-            # 🔄 Phase Changes
+            # Phase Changes
             elif message["type"] == "phase_change":
                 print(f"User changed phase to: {message['phase']}")
                 osc_client.send_message("/phase", message["phase"])
@@ -99,7 +99,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print("WebSocket error:", e)
     finally:
-        await ws_manager.disconnect(websocket)  # ✅ Use WebSocket manager
+        await ws_manager.disconnect(websocket)   
 
 # 📡 Broadcast function
 async def broadcast(message: dict):

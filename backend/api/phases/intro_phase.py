@@ -29,57 +29,98 @@ Phase 2 - INTRODUCTION
         -AUTOPLAY INTRO.MAIA_OUTPUT_2 (WaveSurfer). 
 """
 
-import asyncio
+import os
 import json
+import asyncio
 from fastapi import APIRouter
+from backend.api.pipelines.tts_only import run_tts_only
+from backend.api.pipelines.cv2_tts import run_cv2_tts
 from backend.api.pipelines.inference import run_cv2stt_llm_tts
-from backend.api.pipelines.tts_only import  run_tts_only
-from backend.utils.utils import clients, osc_client, broadcast, ws_manager
+from pythonosc.udp_client import SimpleUDPClient
+from backend.utils.utils import broadcast
+import soundfile as sf
 
 router = APIRouter()
+OSC_IP = "127.0.0.1"
+OSC_PORT = 7400
+client = SimpleUDPClient(OSC_IP, OSC_PORT)
+
+USER_DATA_FILE = "user_data.json"
+STATIC_AUDIO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../static/audio/"))
+
+# Ensure static audio directory exists
+os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
+
+
+def load_user_data():
+    """Load the latest user data."""
+    if os.path.exists(USER_DATA_FILE):
+        with open(USER_DATA_FILE, "r") as f:
+            return json.load(f).get("user", {})
+    return {}
+
+
+def get_wav_duration(file_path):
+    """Returns duration of a WAV file in seconds."""
+    absolute_path = os.path.join(STATIC_AUDIO_DIR, os.path.basename(file_path))  # ✅ Convert relative URL to absolute path
+
+    try:
+        with sf.SoundFile(absolute_path) as f:
+            return len(f) / f.samplerate
+    except Exception as e:
+        print(f"⚠️ Error reading WAV duration: {e} (Path Tried: {absolute_path})")
+        return 5  # Default duration
+
 
 @router.post("/start_intro")
 async def start_intro_phase():
-    """Handles the introduction phase, triggering AI inference."""
     print("🚀 Starting Phase 2: Introduction")
+    user_data = load_user_data()
+    user_name = user_data.get("userName", "Querent")  # Default to 'Querent' if no name
 
     # Send OSC signal to MAX MSP
-    osc_client.send_message("/phase/intro", 1)
+    client.send_message("/phase/intro", 1)
 
-    # Notify frontend via WebSocket
-    await ws_manager.broadcast({
-        "type": "phase_update",
-        "phase": "intro",
-        "lighting": {
-            "maiaLED": 100,
-            "houseLight1": 50,
-            "houseLight2": 50
-        },
-        "audio": {
-            "voiceover": {"file": "intro_voice.wav", "volume": 1.0}
-        }
-    })
+    # 1️⃣ **Run TTS-Only Pipeline (Welcoming)**
+    tts_results = run_tts_only()
+    welcome_audio_path = tts_results.get("audio_url")
+    if welcome_audio_path:
+        audio_duration = get_wav_duration(welcome_audio_path)
+        print(f"📏 Detected WAV duration: {audio_duration} seconds")
+    else:
+        print("⚠️ No audio file found for measuring duration!")
+        audio_duration = 5  # Default fallback
+        
+    await asyncio.sleep(max(audio_duration - 3, 1))  # ✅ Wait before next step
 
-    #welcome
-    ai_results = run_tts_only()
-    # Run AI Pipeline
-    #ai_results = run_cv2stt_llm_tts()
+    # 2️⃣ **Run CV2-TTS Pipeline (Emotion & Posture-based Dynamic Mention)**
+    cv2_tts_results = run_cv2_tts()
+    await asyncio.sleep(1)  # Quick inference response
 
-    # Send TTS audio to frontend
-    await broadcast({
+    # 3️⃣ **Run CV2STT-LLM-TTS Pipeline (Full LLM-based Interaction)**
+    cv2stt_llm_tts_results = run_cv2stt_llm_tts()
+
+    # ✅ **Fix WebSocket Message - Ensuring File Paths Are Correct**
+    welcome_audio_filename = os.path.basename(tts_results["audio_url"])
+    cv2_audio_filename = os.path.basename(cv2_tts_results["audio_url"])
+    llm_audio_filename = os.path.basename(cv2stt_llm_tts_results["audio_url"])
+
+    ws_message = {
         "type": "tts_audio",
-        "audio_url": ai_results["audio_url"],
-        "transcription": ai_results["transcription"],
-        "llm_response": ai_results["llm_response"]
-    })
+        "user_name": user_name,
+        "welcome_audio": f"/static/audio/{welcome_audio_filename}",
+        "cv2_audio": f"/static/audio/{cv2_audio_filename}",
+        "llm_audio": f"/static/audio/{llm_audio_filename}",
+        "transcription": cv2stt_llm_tts_results.get("transcription", ""),
+        "llm_response": cv2stt_llm_tts_results.get("llm_response", ""),
+    }
 
-    return {"message": "Introduction Phase Started", **ai_results}
+    print("🔹 Sending WebSocket Message:", ws_message)  # Debugging
 
+    # ✅ **WebSocket Broadcast (Handles Errors)**
+    try:
+        await broadcast(ws_message)
+    except Exception as e:
+        print(f"⚠️ WebSocket Broadcast Error: {e}")  # Logs error but doesn't crash
 
-async def broadcast(message: dict):
-    """Broadcasts messages via WebSocket."""
-    for client in clients:
-        try:
-            await client.send_text(json.dumps(message))
-        except Exception:
-            clients.remove(client)
+    return {"message": "Phase 2 - Introduction Started", **ws_message}

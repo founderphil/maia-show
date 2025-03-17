@@ -1,5 +1,7 @@
 from fastapi import APIRouter
-from backend.api.phases.tablet_phase import start_tablet_phase 
+from backend.api.phases.tablet_phase import start_tablet_phase
+from backend.api.phases.intro_phase import start_intro_phase
+from backend.api.websocket_manager import ws_manager
 import json
 import os
 from pythonosc.udp_client import SimpleUDPClient
@@ -59,24 +61,22 @@ async def save_user(user_data: dict):
 async def start_intro():
     print("🚀 Starting Phase 2: Introduction")
 
-    # tell MAX MSP to start Phase 2
+    # Send OSC message to MAX MSP to start Phase 2
     client.send_message("/phase/intro", 1)
-    
     # Cue 4: Play Preshow Voice
-    print("Go Preshow Voice Cue")
-    client.send_message("/audio/play", ["Preshow_Voice_1.wav", float(1)])
-
     # Cue 5: Stop Preshow Voice if Tablet picked up
-    print("Go Stop Preshow Voice Cue")
     client.send_message("/audio/stop", "Preshow_Voice_1.wav")
 
     # Increase music volume to 50%
     client.send_message("/audio/play", ["Majo.mp3", 0.50])
 
-    # Cue 6-9: User Input Handling (Simulated)
-    print("User Input Handling Simulated")
+    # Send WebSocket Message to UI to update phase
+    await ws_manager.broadcast({
+        "type": "phase_change",
+        "phase": "intro"
+    })
 
-    return {"message": "Phase 2 started"}
+    return {"message": "Phase 2 (Introduction) started"}
 
 @router.post("/start_phase")  # ✅ Ensure this is registered
 async def start_phase(data: dict):

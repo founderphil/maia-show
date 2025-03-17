@@ -57,7 +57,7 @@ def record_audio(filename: str, record_seconds: int = 5, sample_rate: int = 1600
                         input=True,
                         frames_per_buffer=chunk)
     
-    print("Recording audio...")
+    print("Recording participant audio...")
     frames = []
     for _ in range(0, int(sample_rate / chunk * record_seconds)):
         data = stream.read(chunk)
