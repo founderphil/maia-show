@@ -1,19 +1,15 @@
 import os
-import uuid
-import torch
 import json
+import asyncio
 from backend.models.stt_tts.tts import synthesize_speech
 from backend.models.vision.vision import capture_webcam_image, detect_vision
+from backend.utils.utils import broadcast
+from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, USER_DATA_FILE, STATIC_IMAGE_DIR
 
-# Paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_AUDIO_DIR = os.path.join(BASE_DIR, "../../static/audio/")
-SPEAKER_WAV = os.path.join(BASE_DIR, "../../models/stt_tts/patricia_full.wav")
+os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
+
 OUTPUT_FILENAME = "maia_output_seat.wav"
 TTS_OUTPUT_PATH = os.path.join(STATIC_AUDIO_DIR, OUTPUT_FILENAME)
-USER_DATA_FILE = os.path.join(BASE_DIR, "../../../user_data.json")
-
-os.makedirs(STATIC_AUDIO_DIR, exist_ok=True) #debug. paths are hard.
 
 def load_user_data():
     """Load the user's saved name from user_data.json."""
@@ -24,27 +20,27 @@ def load_user_data():
     except FileNotFoundError:
         return "Querent"
 
-def run_cv2_tts():
+async def run_cv2_tts():
     """Runs facial emotion + posture detection, then generates speech based on it."""
     user_name = load_user_data()
-    captured_image_path = capture_webcam_image("captured.png")
+
+    captured_image_path = capture_webcam_image(os.path.join(STATIC_IMAGE_DIR, "captured.png"))
 
     if captured_image_path:
         vision_result = detect_vision(captured_image_path)
     else:
         vision_result = {"emotion": "neutral", "posture": "N/A"}
 
+    #emotion and posture snapshot
     emotion = vision_result.get("emotion", "neutral")
     posture = vision_result.get("posture", "unknown")
-    print(f"Detected Emotion: {emotion}, Posture: {posture}")
+    print(f"👁️ Detected Emotion: {emotion}, Posture: {posture}")
 
-    # Generate dynamic reponse detected emotion & posture
-    if posture == "Standing":
-        posture_comment = "I see you are standing. Would you like to take a seat and get comfortable?"
-    elif posture == "sitting":
-        posture_comment = "Ah, you are seated. That means you're ready to listen."
-    else:
-        posture_comment = "I am unsure if you are standing or sitting, but I sense you are present. PLease, take a seat."
+    posture_comments = {
+        "Standing": "I see you are standing. Would you like to take a seat and get comfortable?",
+        "sitting": "Ah, you are seated. That means you're ready to listen.",
+    }
+    posture_comment = posture_comments.get(posture, "I am unsure if you are standing or sitting, but I sense you are present. Please, take a seat.")
 
     emotion_comments = {
     "happy": f"You seem happy today, {user_name}. That brings joy to my heart.",
@@ -53,7 +49,7 @@ def run_cv2_tts():
     "angry": f"I feel your frustration, {user_name}. Perhaps a deep breath will help clear your mind?",
     "surprised": f"You look shocked! Do not be worried, {user_name}."
 }
-    
+
     emotion_comment = emotion_comments.get(emotion, "Your expression intrigues me.")
 
     # SIT DOWN
@@ -74,10 +70,24 @@ def run_cv2_tts():
 
     print(f"✅ Audio saved to {TTS_OUTPUT_PATH}")
 
-    return {
-        "emotion": emotion,
-        "posture": posture,
-        "transcription": tts_text,
-        "llm_response": tts_text,
-        "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
+    ws_message = {
+    "type": "vision_update",
+    "vision_image": "/static/captured.png",
+    "vision_emotion": emotion,
+    "vision_posture": posture,
+    "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
+    "text": tts_text,
     }
+    await broadcast(ws_message)
+
+    if ws_message is None:
+        print("🚨 ERROR: WebSocket message is None!")
+    else:
+        print("📡 Sending WebSocket Message:", ws_message)
+
+    try:
+        await broadcast(ws_message)
+    except Exception as e:
+        print(f"⚠️ WebSocket Broadcast Error: {e}")
+
+    return ws_message

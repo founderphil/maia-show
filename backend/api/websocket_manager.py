@@ -10,7 +10,8 @@ class WebSocketManager:
         self.clients.add(websocket)
 
     async def disconnect(self, websocket: WebSocket):
-        self.clients.discard(websocket)
+        if websocket in self.clients:
+            self.clients.discard(websocket)
 
     async def broadcast(self, message: dict):
         """Send a message to all WebSocket clients."""
@@ -24,5 +25,5 @@ class WebSocketManager:
         for client in to_remove:
             self.clients.discard(client)
 
-# Global instance
+# ✅ Global instance
 ws_manager = WebSocketManager()

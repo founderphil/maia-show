@@ -27,9 +27,13 @@ import json
 from fastapi import APIRouter
 from pythonosc.udp_client import SimpleUDPClient
 from backend.api.websocket_manager import ws_manager
+from backend.utils.utils import broadcast
+from backend.config import USER_DATA_FILE, STATIC_AUDIO_DIR
+
+import os
+os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
 router = APIRouter()
-USER_DATA_FILE = "user_data.json"
 
 OSC_IP = "127.0.0.1"
 OSC_PORT = 7400
@@ -46,35 +50,57 @@ def save_user_data(data):
     with open(USER_DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-router.post("/start_tablet")
+router.post("/start_tablet") #TODO: move the intro TTS inference to this endpoint
 async def start_tablet_phase():
-    print("🚀 Starting Phase 1: Tablet")
-
-    print("🎭 Sending Lighting Cues to MAX MSP")
-    client.send_message("/lighting/maiaLED", 0)
-    client.send_message("/lighting/houseLight1", 100)
-    client.send_message("/lighting/houseLight2", 100)
-    client.send_message("/lighting/chairSpot", 0)
-    client.send_message("/lighting/maiaSpot1", 0)
-    client.send_message("/lighting/maiaSpot2", 0)
-    client.send_message("/lighting/maiaProjector1", 0)
-    client.send_message("/lighting/maiaProjector2", 0)
+    print("🚀 Starting Show!")
+    
+    #TODO: reset user data, do not load it, delete it all
 
     await asyncio.sleep(1)
-
-    # request music play in MAX over the speakers - this is a transition of space
-    print("🎵 Playing Majo.mp3 at 25% volume in MAX MSP")
+    print("Go Cue 1 - Lights, Reset Tablet, Play Music")
+    lighting_cues = {
+        "maiaLED": 0,
+        "houseLight1": 100,
+        "houseLight2": 100,
+        "chairSpot": 0,
+        "maiaSpot1": 0,
+        "maiaSpot2": 0,
+        "maiaProjector1": 0,
+        "maiaProjector2": 0,
+    }
+    for light, value in lighting_cues.items():
+        client.send_message(f"/lighting/{light}", value)
+    await asyncio.sleep(1)
     client.send_message("/audio/play", ["Majo.mp3", 0.25])
+
+    return {"status": "Tablet Phase Started"}
+
+
 
 @router.post("/activate")
 async def activate():
-    """Final step when user presses 'Activate' in Tablet UI."""
+    """✨ Final step when user presses 'Activate' in Tablet UI."""
     print("✨ User pressed Activate! Advancing to Phase 2 - Introduction.")
 
-    # Increase Music Volume via MAX MSP
-    client.send_message("/audio/soundtrack", ["Majo.mp3", 1])
 
-    # not sure what i want to tell MAX TODO
+    client.send_message("/audio/play", ["Majo.mp3", 0.50])
+
+
     client.send_message("/phase/start", "intro")
 
-    return {"message": "Phase 2 - Introduction Started"}
+
+    ws_message = {
+    "type": "phase_change",
+    "phase": "intro",
+    "message": "Phase 2 - Introduction Started"
+    }
+    await broadcast(ws_message)
+
+    if ws_message is None:
+        print("🚨 ERROR: WebSocket message is None!")
+    else:
+        print("📡 Sending WebSocket Message:", ws_message)
+    try:
+        await ws_manager.broadcast(ws_message)
+    except Exception as e:
+        print(f"⚠️ WebSocket Broadcast Error: {e}")

@@ -7,6 +7,12 @@ import wave
 import json
 from vosk import Model, KaldiRecognizer
 import pyaudio
+import sounddevice as sd
+import numpy as np 
+
+SILENCE_THRESHOLD = 0.01  # Adjust based on environment noise level
+SILENCE_DURATION = 1.5  # Stop recording after 1.5s of silence
+SAMPLE_RATE = 16000  # Sample rate for Vosk STT
 
 def download_and_extract_model(url: str, extract_to: str = "models"):
     os.makedirs(extract_to, exist_ok=True)
@@ -49,30 +55,43 @@ def transcribe_audio(audio_file_path: str) -> str:
     
     return result_text.strip()
 
-def record_audio(filename: str, record_seconds: int = 5, sample_rate: int = 16000, channels: int = 1, chunk: int = 1024):
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=pyaudio.paInt16,
-                        channels=channels,
-                        rate=sample_rate,
-                        input=True,
-                        frames_per_buffer=chunk)
-    
-    print("Recording participant audio...")
-    frames = []
-    for _ in range(0, int(sample_rate / chunk * record_seconds)):
-        data = stream.read(chunk)
-        frames.append(data)
-    
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-    
-    with wave.open(filename, 'wb') as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
-        wf.setframerate(sample_rate)
-        wf.writeframes(b''.join(frames))
-    print("Audio recorded and saved to", filename)
+def record_audio(output_filename="temp.wav", max_duration=10):
+    """Records audio dynamically, stopping when silence is detected."""
+    print("🎙️ Listening... Speak now.")
+
+    recording = []
+    silence_start = None
+
+    def callback(indata, frames, time, status):
+        nonlocal silence_start
+        volume_norm = np.linalg.norm(indata) * 10  # Normalize volume
+        recording.append(indata.copy())
+
+        # Check for silence
+        if volume_norm < SILENCE_THRESHOLD:
+            if silence_start is None:
+                silence_start = time.inputBufferAdcTime
+            elif time.inputBufferAdcTime - silence_start > SILENCE_DURATION:
+                raise sd.CallbackStop  # Stop recording when silent
+        else:
+            silence_start = None  # Reset silence timer
+
+    try:
+        with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, callback=callback):
+            sd.sleep(max_duration * 1000)  # Failsafe to avoid infinite recording
+    except sd.CallbackStop:
+        pass  # Normal exit when silence is detected
+
+    # Save to file
+    recording = np.concatenate(recording, axis=0)
+    with wave.open(output_filename, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes((recording * 32767).astype(np.int16).tobytes())
+
+    print(f"✅ Recording saved: {output_filename}")
+    return output_filename
 
 if __name__ == "__main__":
     # Download model if not present

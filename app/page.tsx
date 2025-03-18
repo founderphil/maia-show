@@ -12,16 +12,11 @@ export default function ShowrunnerUI() {
   const [aiStatus, setAiStatus] = useState<string>("idle");
   const [activePhase, setActivePhase] = useState("tablet");
   //TODO: Replace with actual user data
-  const [userData, setUserData] = useState({ 
-    name: "Querent",
-    color: "Purple",
-    signet: "Star",
-    responses: [],
-  });
-  
-  const [ttsAudio, setTtsAudio] = useState<string | null>(null);
+  const [userData, setUserData] = useState<Record<string, string>>({});
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-
+  const [latestSTT, setLatestSTT] = useState<string>("");
+  const [ttsAudio, setTtsAudio] = useState<string | null>(null);
+  const [latestVision, setLatestVision] = useState<{ emotion: string; posture: string }>({ emotion: "", posture: "" });
   const [lighting, setLighting] = useState({
     maiaLED: 50,
     houseLight1: 80,
@@ -32,6 +27,28 @@ export default function ShowrunnerUI() {
     maiaProjector1: 0,
     maiaProjector2: 80,
   });
+
+  const handlePhaseChange = async (phase: string) => {
+    setActivePhase(phase); // ✅ Update active phase in state
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/start_phase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phase }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`Phase started successfully: ${data.message}`);
+    } catch (error) {
+      console.error("Error triggering phase:", error);
+      alert("Failed to start phase. Check console for details.");
+    }
+  };
 
   useEffect(() => {
     if (!ws) return;
@@ -55,52 +72,57 @@ export default function ShowrunnerUI() {
   useEffect(() => {
     const connectWebSocket = () => {
       const socket = new WebSocket("ws://localhost:8000/ws");
-
+  
       socket.onopen = () => {
-        console.log("Connected to WebSocket");
+        console.log("✅ Connected to WebSocket");
         setWs(socket);
       };
-
+  
       socket.onmessage = (event) => {
-        const data: { 
-          type: string; 
-          pipeline?: string; 
-          status?: string; 
-          light?: string; 
-          value?: number; 
-          userData?: any; 
-          audio_url?: string;
-        } = JSON.parse(event.data);
-      
-        console.log("Received WebSocket message:", data);
-      
-        if (data.type === "ai_status" && data.pipeline && data.status) {
-          setAiStatus(`${data.pipeline} is ${data.status}`);
-        } else if (data.type === "lighting_status" && typeof data.light === "string" && typeof data.value === "number") {
-          setLighting((prev) => ({
-            ...prev,
-            [String(data.light)]: data.value, // ✅ Ensure light key is a string
-          }));
-        } else if (data.type === "user_data" && data.userData) {
-          setUserData(data.userData);
-        } else if (data.type === "tts_audio" && typeof data.audio_url === "string") {
-          console.log("New TTS Audio:", data.audio_url);
-          setAudioUrl(data.audio_url);
+        const data = JSON.parse(event.data);
+        console.log("📡 WebSocket Data Received:", data);
+    
+        if (!data) {
+            console.error("🚨 WebSocket Error: Received null or empty message!");
+            return;
         }
-      };
-
+    
+        if (data.type === "tts_audio" || data.type === "phase_intro") {
+            setAudioUrl(data.audio_url || ""); 
+            setUserData((prevData) => ({
+                ...prevData,
+                latest_maia_output: data.llm_response || "Waiting for MAIA response...",
+            }));
+        }
+    
+        if (data.type === "stt_update" || data.type === "vision_update") {
+            setLatestSTT(data.stt_input || "No speech detected."); 
+        }
+    
+        if (data.type === "vision_update") {
+            setLatestVision({
+                emotion: data.vision_emotion || "Unknown",
+                posture: data.vision_posture || "Unknown",
+            });
+        }
+    
+        if (data.type === "user_data") {
+            setUserData(data.user_data || {}); 
+        }
+    };
+  
       socket.onclose = () => {
-        console.log("WebSocket disconnected, attempting to reconnect...");
+        console.warn("⚠️ WebSocket disconnected, attempting to reconnect...");
         setTimeout(connectWebSocket, 2000);
       };
-
+  
       socket.onerror = (error) => {
-        console.error("WebSocket Error:", error);
+        console.error("🚨 WebSocket Error:", error);
       };
-
+  
       return socket;
     };
-
+  
     const wsInstance = connectWebSocket();
     return () => wsInstance.close();
   }, []);
@@ -136,63 +158,89 @@ export default function ShowrunnerUI() {
 
   return (
     <div className="p-4 min-h-screen bg-[var(--bg-dark)] text-[var(--text-primary)]">
+      {/* Top Header with Controls */}
       <div className="flex justify-between mb-4">
         <h1 className="text-2xl font-bold mb-2 text-left">MAIA Backend Showrunner</h1>
         <div className="flex space-x-2">
-          <button onClick={() => handleShowControl("play")} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">
-            Play
-          </button>
-          <button onClick={() => handleShowControl("pause")} className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">
-            Pause
-          </button>
-          <button onClick={() => handleShowControl("reset")} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
-            Reset
-          </button>
+          <button onClick={() => sendWebSocketMessage({ type: "show_control", command: "play" })} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Play</button>
+          <button onClick={() => sendWebSocketMessage({ type: "show_control", command: "pause" })} className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">Pause</button>
+          <button onClick={() => sendWebSocketMessage({ type: "show_control", command: "reset" })} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Reset</button>
         </div>
       </div>
 
-      <div className="flex justify-between mb-4">
-        <PhaseNavigation activePhase={activePhase} onPhaseChange={changePhase} />
+      {/* Phase Navigation & AI Pipeline Controls */}
+      <div className="flex space-x-4 mb-4 col-span-2">
+      <PhaseNavigation activePhase={activePhase} onPhaseChange={handlePhaseChange} />
+        <AIPipelineControls onAiCommand={(pipeline) => sendWebSocketMessage({ type: "ai_command", pipeline, command: "start" })} />
       </div>
 
-      <div className="flex space-x-2 mb-4">
-        <AIPipelineControls onAiCommand={sendAiCommand} />
-      </div>
-
+      {/* Two-Column Layout */}
       <div className="grid grid-cols-2 gap-4">
-        {/* AI Status and Audio Player */}
-        <div className="bg-[var(--bg-panel)] p-4 rounded-lg">
-          <h2 className="text-xl font-bold mb-2">AI Pipeline Status</h2>
-          <LiveDataConsole aiStatus={aiStatus} />
-          
-          {/* Audio Player */}
-          {audioUrl && (
-            <div className="mt-4">
-              <h3 className="text-lg font-bold">TTS Output</h3>
-              <audio controls autoPlay className="w-full mt-2">
+        {/* Left Column: MAIA Activity */}
+        <div className="bg-[var(--bg-panel)] p-4 rounded-lg h-[600px] overflow-y-auto">
+          <h2 className="text-xl font-bold mb-2">MAIA Activity</h2>
+
+          {/* Input Layer */}
+          <div className="border-b pb-4 mb-4">
+            <div className="flex justify-between">
+              {/* Hearing */}
+              <div className="w-1/2 pr-4">
+                <h3 className="text-lg font-bold">HEARING</h3>
+                <div className="bg-gray-800 p-2 rounded mt-2 text-sm">{latestSTT}</div>
+              </div>
+
+              {/* Vision */}
+              <div className="w-1/2">
+                <h3 className="text-lg font-bold">VISION</h3>
+                <img 
+                  src="/static/images/captured.png" 
+                  alt="No Image" 
+                  className="w-full h-40 object-cover mt-2" 
+                  onError={(e) => e.currentTarget.src = "/static/images/fallback-image.png"} 
+                />
+                <div className="text-sm mt-2">
+                  <p><strong>Emotion:</strong> {latestVision.emotion || "Unknown"}</p>
+                  <p><strong>Posture:</strong> {latestVision.posture || "Unknown"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* MAIA Output Feed Console */}
+          <div>
+            <h3 className="text-lg font-bold">MAIA OUTPUT FEED CONSOLE</h3>
+            <div className="bg-gray-800 p-2 rounded mt-2 text-sm">{userData["latest_maia_output"] || "Waiting for MAIA response..."}</div>
+            {audioUrl && (
+              <audio controls autoPlay className="w-full mt-4">
                 <source src={audioUrl} type="audio/wav" />
                 Your browser does not support the audio element.
               </audio>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="bg-[var(--bg-panel)] p-4 rounded-lg">
-          <h2 className="text-xl font-bold mb-2">User Data</h2>
-          <p>Name: {userData.name}</p>
-          <p>Color: {userData.color}</p>
-          <p>Signet: {userData.signet}</p>
-          <h3 className="mt-4 text-lg font-bold">Responses</h3>
-          <ul className="text-sm">
-            {userData.responses.map((res, index) => (
-              <li key={index}>- {res}</li>
-            ))}
-          </ul>
-        </div>
+        {/* Right Column: User Data & Lighting Controls */}
+        <div className="flex flex-col space-y-4">
+          {/* User Data Box */}
+          <div className="bg-[var(--bg-panel)] p-4 rounded-lg h-[300px] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-2">User Data</h2>
+            <table className="w-full text-sm">
+              <tbody>
+                {Object.entries(userData).map(([key, value]) => (
+                  <tr key={key}>
+                    <td className="pr-4 font-bold">{key}</td>
+                    <td>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        <div>
-          <h2 className="text-lg font-bold mt-4 mb-2">Lighting Controls</h2>
-          <LightingControls lighting={lighting} onLightingUpdate={updateLighting} />
+          {/* Lighting Controls */}
+          <div className="bg-[var(--bg-panel)] p-4 rounded-lg">
+            <h2 className="text-xl font-bold mb-2">Lighting Controls</h2>
+            <LightingControls lighting={lighting} onLightingUpdate={updateLighting} />
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,9 @@
 from fastapi import APIRouter
 from backend.api.phases.tablet_phase import start_tablet_phase
 from backend.api.phases.intro_phase import start_intro_phase
+from backend.api.phases.lore_phase import start_lore_phase
+from backend.api.phases.assign_phase import start_assign_phase
+from backend.api.phases.depart_phase import start_depart_phase
 from backend.api.websocket_manager import ws_manager
 import json
 import os
@@ -55,6 +58,15 @@ async def save_user(user_data: dict):
 
     return {"message": "User data saved successfully", "user": existing_data["user"]}
 
+# 📌 **Phase Mapping**: Automatically Call the Correct Phase Function
+PHASE_FUNCTIONS = {
+    "tablet": start_tablet_phase,
+    "intro": start_intro_phase,
+    "lore": start_lore_phase,
+    "assignment": start_assign_phase,
+    "departure": start_depart_phase,
+}
+
 
 # API endpoint to activate Phase 2 (Introduction)
 @router.post("/start_intro")
@@ -78,12 +90,19 @@ async def start_intro():
 
     return {"message": "Phase 2 (Introduction) started"}
 
-@router.post("/start_phase")  # ✅ Ensure this is registered
+@router.post("/start_phase")
 async def start_phase(data: dict):
     phase = data.get("phase")
     print(f"🔄 User changed phases to: {phase}")
 
-    if phase == "tablet":
-        return await start_tablet_phase()
-    else:
-        return {"message": f"Phase '{phase}' does not have a defined action"}
+    if phase in PHASE_FUNCTIONS:
+        response = await PHASE_FUNCTIONS[phase]()  # Dynamically Call Phase Function
+        
+        # ✅ Ensure response is always a dictionary
+        if response is None:
+            response = {}
+
+        await ws_manager.broadcast({"type": "phase_change", "phase": phase})  
+        return {"message": f"Phase '{phase}' started successfully", **response}
+
+    return {"error": f"Phase '{phase}' does not exist."}

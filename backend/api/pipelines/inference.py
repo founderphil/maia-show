@@ -6,7 +6,9 @@ import torch
 from backend.models.stt_tts.stt import record_audio, transcribe_audio
 from backend.models.stt_tts.tts import synthesize_speech
 from backend.models.vision.vision import capture_webcam_image, detect_vision
-
+from backend.utils.utils import broadcast, save_to_user_data
+from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, BASE_DIR, USER_DATA_FILE, STATIC_IMAGE_DIR
+os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
 system_prompt = """
 System: You are MAIA, a soft-spoken yet immensely wise guide born from the center of creation
@@ -35,12 +37,11 @@ Key points to remember:
 Stay consistent in voice and style. Do not break character or mention any behind-the-scenes AI details. 
 You are MAIA, one of the oldest Guardians of SOL, here to help Querents unlock their hidden gifts.
 """
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_AUDIO_DIR = os.path.join(BASE_DIR, "static/audio/")  
-TTS_DIR = os.path.join(BASE_DIR, "backend/models/stt_tts/")
-SPEAKER_WAV = os.path.join(BASE_DIR, "../../models/stt_tts/patricia_full.wav")
 OUTPUT_FILENAME = "maia_output_general.wav"
 TTS_OUTPUT_PATH = os.path.join(STATIC_AUDIO_DIR, OUTPUT_FILENAME)
+print(f"🔍 Checking speaker WAV path: {SPEAKER_WAV}") #DEBUG
+if not os.path.exists(SPEAKER_WAV):
+    print(f"⚠️ WARNING: Speaker reference file missing at {SPEAKER_WAV}.")
 
 def clean_llama_response(output_text: str) -> str:
     output_text = re.sub(r"=+", "", output_text).strip()
@@ -49,22 +50,19 @@ def clean_llama_response(output_text: str) -> str:
     match = re.search(r"MAIA:\s*(.*?)$", output_text, re.DOTALL)
     if match:
         output_text = match.group(1).strip()
-
     return output_text
 
-os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
-
-def run_cv2stt_llm_tts():
+async def run_cv2stt_llm_tts():
     """Runs the full inference pipeline (Vision + STT + LLM + TTS)."""
     audio_id = str(uuid.uuid4())
-    audio_file = f"temp_{audio_id}.wav"
+    audio_file = os.path.join(STATIC_AUDIO_DIR, f"temp_{audio_id}.wav")
 
-    record_audio(audio_file, record_seconds=5)
-
+    record_audio(audio_file)
     user_question = transcribe_audio(audio_file)
     print("User said:", user_question)
 
-    captured_image_path = capture_webcam_image("captured.png")
+    
+    captured_image_path = os.path.join(STATIC_IMAGE_DIR, "captured.png")
     if captured_image_path:
         vision_result = detect_vision(captured_image_path)
     else:
@@ -75,8 +73,8 @@ def run_cv2stt_llm_tts():
     final_prompt = f"{system_prompt}\nUser emotion: {vision_result['emotion']}.\nUser posture: {vision_result['posture']}.\nUser: {user_question}?\n\nMAIA:"
     print("Final Prompt:", final_prompt)
     
-    model_path = os.path.join("backend/models/llm/llama3_mlx")
-    adapter_path = os.path.join("backend/models/llm/adapters")
+    model_path = os.path.join(BASE_DIR, "backend/models/llm/llama3_mlx")
+    adapter_path = os.path.join(BASE_DIR, "backend/models/llm/adapters")
 
     print("Running LLaMA MLX inference...")
     result = subprocess.run([
@@ -87,8 +85,8 @@ def run_cv2stt_llm_tts():
         "--max-tokens", "128"
     ], capture_output=True, text=True)
 
-    print("🔍 Raw LLaMA Output (stdout):\n", result.stdout)
-    print("🔍 Raw LLaMA Errors (stderr):\n", result.stderr)
+    print("🔍 Raw LLaMA Output (stdout):\n", result.stdout) #DEBUG
+    print("🔍 Raw LLaMA Errors (stderr):\n", result.stderr) #DEBUG
 
     output_text = result.stdout.strip()
     llm_response = clean_llama_response(output_text)
@@ -100,33 +98,42 @@ def run_cv2stt_llm_tts():
 
     print("Saving TTS audio...")
     
-    tts_output_path = os.path.join(STATIC_AUDIO_DIR, OUTPUT_FILENAME)
-    tts_output = OUTPUT_FILENAME
-
+    print("Saving TTS audio...")
     synthesize_speech(
         text=llm_response,
         speaker_wav=SPEAKER_WAV,  
-        file_path=tts_output_path
+        file_path=TTS_OUTPUT_PATH
     )
 
-    print(f"✅ TTS Output Saved at {tts_output}")
+    print(f"✅ TTS Output Saved at {TTS_OUTPUT_PATH}")
 
-    static_dir = "static/audio"
-    os.makedirs(static_dir, exist_ok=True)
-    final_audio_path = os.path.join(static_dir, tts_output)
-    os.rename(tts_output, final_audio_path)
-    audio_url = audio_url
+    # 📡 **Step 7: Broadcast WebSocket Message**
+    ws_message = {
+        "type": "tts_audio",
+        "phase": "full inference",
+        "transcription": user_question,
+        "final_prompt": final_prompt,
+        "llm_response": llm_response,
+        "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
+        "vision_image": "/static/captured.png",
+        "vision_emotion": vision_result.get("emotion", "N/A"),
+        "vision_posture": vision_result.get("posture", "N/A"),
+    }
+    await broadcast(ws_message)
+
+    if ws_message is None:
+        print("🚨 ERROR: WebSocket message is None!")
+    else:
+        print("📡 Sending WebSocket Message:", ws_message)
+
+    try:
+        broadcast(ws_message)
+    except Exception as e:
+        print(f"⚠️ WebSocket Broadcast Error: {e}")
+
+    save_to_user_data("intro", "user", user_question)
+    save_to_user_data("intro", "maia", llm_response)
 
     os.remove(audio_file)
 
-    return {
-    "transcription": user_question,
-    "final_prompt": final_prompt,
-    "llm_response": llm_response,
-    "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
-    "vision_data": {
-        "image_url": captured_image_path or "captured.png",
-        "emotion": vision_result.get("emotion", "N/A"),
-        "posture": vision_result.get("posture", "N/A")
-    }
-    }
+    return ws_message  

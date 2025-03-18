@@ -1,5 +1,3 @@
-# backend/models/vision/vision.py
-
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -7,10 +5,12 @@ from fer import FER
 import time
 import os
 
-def capture_webcam_image(save_path="captured.png"):
+def capture_webcam_image(save_path=None):
     if save_path is None:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        save_path = os.path.join(base_dir, "..", "..", "frontend", "captured.png")
+        save_path = os.path.join(base_dir, "..", "..", "static", "captured.png")
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Could not open webcam")
@@ -24,10 +24,10 @@ def capture_webcam_image(save_path="captured.png"):
     cap.release()
     if ret:
         cv2.imwrite(save_path, frame)
-        print(f"Image captured and saved to {save_path}")
+        print(f"✅ Image captured and saved to {save_path}")
         return save_path
     else:
-        print("Failed to capture image from webcam")
+        print("❌ Failed to capture image from webcam")
         return None
 
 def detect_emotion(image):
