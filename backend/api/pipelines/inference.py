@@ -108,9 +108,8 @@ async def run_cv2stt_llm_tts():
 
     # 📡 **Step 7: Broadcast WebSocket Message**
     ws_message = {
-        "type": "tts_audio",
-        "phase": "full inference",
-        "transcription": user_question,
+        "type": "full_inference",
+        "user_question": user_question,
         "final_prompt": final_prompt,
         "llm_response": llm_response,
         "audio_url": f"/static/audio/{OUTPUT_FILENAME}",

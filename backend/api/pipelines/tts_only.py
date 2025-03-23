@@ -51,11 +51,10 @@ async def run_tts_only():
 
     ws_message = {
         "type": "tts_audio_only",
-        "phase": "tts_only",
         "user_name": user_name or "Unknown",   
         "chosen_signet": chosen_signet or "?",
         "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
-        "text": tts_text
+        "llm_response": tts_text
     }
 
     if ws_message is None:

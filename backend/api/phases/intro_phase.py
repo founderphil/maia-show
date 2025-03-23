@@ -77,7 +77,7 @@ async def start_intro_phase():
 
     print("1️⃣ Generate Welcome Message and pause for TTS")
     tts_results = await run_tts_only()
-    save_to_user_data("intro", "maia", tts_results["text"])  # Save TTS output to localDB
+    save_to_user_data("intro", "maia", tts_results["llm_response"])  # Save TTS output to localDB
     welcome_audio_path = tts_results.get("audio_url")
     
     if welcome_audio_path:
@@ -91,12 +91,12 @@ async def start_intro_phase():
 
     print("2️⃣ Generate Emotion & Posture-based Dynamic Mention")
     cv2_tts_results = await run_cv2_tts()
-    save_to_user_data("intro", "maia", cv2_tts_results["text"])
+    save_to_user_data("intro", "maia", cv2_tts_results["llm_response"])
     await asyncio.sleep(1)  # Quick inference response
 
     print("3️⃣ Go Full LLM-based Interaction")
     cv2stt_llm_tts_results =  await run_cv2stt_llm_tts()
-    save_to_user_data("intro", "user", cv2stt_llm_tts_results["transcription"])
+    save_to_user_data("intro", "user", cv2stt_llm_tts_results["user_transcription"])
     save_to_user_data("intro", "maia", cv2stt_llm_tts_results["llm_response"])
 
     welcome_audio_filename = os.path.basename(tts_results["audio_url"])
@@ -111,19 +111,19 @@ async def start_intro_phase():
     ws_message = {
     "type": "phase_intro",
     "phase": "intro",
+    "message": "Phase 2 - Intro Started",
     "user_name": user_name,
     "welcome_audio": f"/static/audio/{welcome_audio_filename}",
     "cv2_audio": f"/static/audio/{cv2_audio_filename}",
     "llm_audio": f"/static/audio/{llm_audio_filename}",
     "audio_url": f"/static/audio/{llm_audio_filename}",
-    "transcription": cv2stt_llm_tts_results.get("transcription", ""),
+    "user_transcription": cv2stt_llm_tts_results.get("user_question", ""),
     "llm_response": cv2stt_llm_tts_results.get("llm_response", ""),
     "vision_image": f"/static/{captured_image_filename}",
-    "stt_input": cv2stt_llm_tts_results.get("user_input", ""),
     "vision_emotion": cv2_tts_results.get("emotion", "Unknown"),
     "vision_posture": cv2_tts_results.get("posture", "Unknown"),
-    "user_data": user_data
     }
+
     await broadcast(ws_message)
     if ws_message is None:
         print("🚨 ERROR: WebSocket message is None!")

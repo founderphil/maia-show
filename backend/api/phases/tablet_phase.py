@@ -90,9 +90,9 @@ async def activate():
 
 
     ws_message = {
-    "type": "phase_change",
-    "phase": "intro",
-    "message": "Phase 2 - Introduction Started"
+    "type": "phase_tablet",
+    "phase": "tablet",
+    "message": "Phase 1 - Tablet Started"
     }
     await broadcast(ws_message)
 

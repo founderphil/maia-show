@@ -76,7 +76,7 @@ async def run_cv2_tts():
     "vision_emotion": emotion,
     "vision_posture": posture,
     "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
-    "text": tts_text,
+    "llm_response": tts_text,
     }
     await broadcast(ws_message)
 
