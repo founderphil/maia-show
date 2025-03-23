@@ -39,7 +39,6 @@ You are MAIA, one of the oldest Guardians of SOL, here to help Querents unlock t
 """
 OUTPUT_FILENAME = "maia_output_general.wav"
 TTS_OUTPUT_PATH = os.path.join(STATIC_AUDIO_DIR, OUTPUT_FILENAME)
-print(f"🔍 Checking speaker WAV path: {SPEAKER_WAV}") #DEBUG
 if not os.path.exists(SPEAKER_WAV):
     print(f"⚠️ WARNING: Speaker reference file missing at {SPEAKER_WAV}.")
 

@@ -24,6 +24,5 @@ class WebSocketManager:
 
         for client in to_remove:
             self.clients.discard(client)
-
-# ✅ Global instance
+            
 ws_manager = WebSocketManager()

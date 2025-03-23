@@ -63,7 +63,7 @@ export default function TabletUI() {
         play
       </button>
 
-      <h1 className="text-2xl font-bold mb-4">What do I call you?</h1>
+      <h1 className="text-2xl font-bold mb-4">What shall I call you?</h1>
       <input
         type="text"
         value={userName}

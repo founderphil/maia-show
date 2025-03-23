@@ -26,7 +26,8 @@ async def run_tts_only():
     chosen_signet = user_data.get("chosenSignet", "★") 
 
     tts_text = (
-        f"Welcome Querent. I have been searching for you."
+        f"Welcome {user_name}."
+        f"I have been searching for you."
         f"What's important now is that you are here."
         f"I have learned so much about who you are by watching over the years {user_name}."
         f"Even though I have seen a great deal of life on Earth, you have surprised me."

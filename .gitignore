@@ -3,9 +3,11 @@
 *.safetensors
 *.pth
 
-#IP files
+#User Data files
 *.wav
 *.mp3
+user_data.json
+captured.png
 
 # dependencies
 /node_modules

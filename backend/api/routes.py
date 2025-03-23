@@ -58,7 +58,7 @@ async def save_user(user_data: dict):
 
     return {"message": "User data saved successfully", "user": existing_data["user"]}
 
-# 📌 **Phase Mapping**: Automatically Call the Correct Phase Function
+
 PHASE_FUNCTIONS = {
     "tablet": start_tablet_phase,
     "intro": start_intro_phase,
@@ -96,9 +96,8 @@ async def start_phase(data: dict):
     print(f"🔄 User changed phases to: {phase}")
 
     if phase in PHASE_FUNCTIONS:
-        response = await PHASE_FUNCTIONS[phase]()  # Dynamically Call Phase Function
+        response = await PHASE_FUNCTIONS[phase]()
         
-        # ✅ Ensure response is always a dictionary
         if response is None:
             response = {}
 

@@ -23,4 +23,8 @@ find your IP with ifconfig
 ### arduino esp32
 oscMAIA.ino runs on Arduino ESP32, connects to MAX
 
+### TTS
+IP voice sample excluded from repo!
+for TTS you will need a voice sample to run inference. placed sample .wav file at /backend/models/stt_tts/models/ 
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app)

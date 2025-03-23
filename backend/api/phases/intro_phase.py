@@ -110,7 +110,7 @@ async def start_intro_phase():
 
     ws_message = {
     "type": "phase_intro",
-    "pahse": "intro",
+    "phase": "intro",
     "user_name": user_name,
     "welcome_audio": f"/static/audio/{welcome_audio_filename}",
     "cv2_audio": f"/static/audio/{cv2_audio_filename}",
