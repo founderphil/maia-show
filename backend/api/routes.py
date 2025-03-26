@@ -67,29 +67,6 @@ PHASE_FUNCTIONS = {
     "departure": start_depart_phase,
 }
 
-
-# API endpoint to activate Phase 2 (Introduction)
-@router.post("/start_intro")
-async def start_intro():
-    print("🚀 Starting Phase 2: Introduction")
-
-    # Send OSC message to MAX MSP to start Phase 2
-    client.send_message("/phase/intro", 1)
-    # Cue 4: Play Preshow Voice
-    # Cue 5: Stop Preshow Voice if Tablet picked up
-    client.send_message("/audio/stop", "Preshow_Voice_1.wav")
-
-    # Increase music volume to 50%
-    client.send_message("/audio/play", ["Majo.mp3", 0.50])
-
-    # Send WebSocket Message to UI to update phase
-    await ws_manager.broadcast({
-        "type": "phase_change",
-        "phase": "intro"
-    })
-
-    return {"message": "Phase 2 (Introduction) started"}
-
 @router.post("/start_phase")
 async def start_phase(data: dict):
     phase = data.get("phase")
@@ -97,11 +74,13 @@ async def start_phase(data: dict):
 
     if phase in PHASE_FUNCTIONS:
         response = await PHASE_FUNCTIONS[phase]()
-        
         if response is None:
             response = {}
-
-        await ws_manager.broadcast({"type": "phase_change", "phase": phase})  
+        await ws_manager.broadcast({
+            "type": f"phase_{phase}",
+            "phase": phase,
+            "message": f"Phase '{phase}' started"
+        })
         return {"message": f"Phase '{phase}' started successfully", **response}
 
     return {"error": f"Phase '{phase}' does not exist."}

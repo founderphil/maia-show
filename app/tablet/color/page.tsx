@@ -83,7 +83,7 @@ export default function ColorSelection() {
     }
   
     try {
-      await fetch("/api/proxy", {
+      fetch("/api/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -91,6 +91,13 @@ export default function ColorSelection() {
           body: { userName, chosenColor },
         }),
       });
+  
+      // Background TTS placeholder (non-blocking, currently disabled)
+      // fetch("/api/proxy", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ pathname: "/run_color_tts" }),
+      // }).catch((err) => console.error("Background color TTS failed:", err));
 
       router.push("/tablet/signet");
     } catch (error) {
@@ -103,7 +110,7 @@ export default function ColorSelection() {
       className="flex flex-col items-center justify-center min-h-screen transition-all duration-200"
       style={{ backgroundColor: chosenColor }}
     >
-      <h1 className="text-2xl font-bold mb-4 text-white">
+      <h1 className="text-2xl font-bold mb-4 text-light-gray-100">
       {userName ? `${userName}, what calls to you?` : "What calls to you?"}
       </h1>
 

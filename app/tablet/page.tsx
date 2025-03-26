@@ -45,6 +45,12 @@ export default function TabletUI() {
       const result = await response.json();
       console.log("User saved:", result);
 
+      fetch("/api/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pathname: "/run_tablet_tts" }),
+      }).catch((err) => console.error("Background TTS failed:", err));
+
       sessionStorage.setItem("userName", userName);
       router.push("/tablet/color");
     } catch (error) {
@@ -54,7 +60,6 @@ export default function TabletUI() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white relative">
-      {/* Audio Play Button (Absolute Upper-Left Corner) */}
       <button
         onClick={handlePlayAudio}
         className="absolute top-0 left-0 bg-gray-900 text-gray-800 px-3 py-2 text-xs rounded border-gray"

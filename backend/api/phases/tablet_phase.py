@@ -26,9 +26,11 @@ import asyncio
 import json
 from fastapi import APIRouter
 from pythonosc.udp_client import SimpleUDPClient
+from backend.api.pipelines.tts_only import run_tts_only
 from backend.api.websocket_manager import ws_manager
-from backend.utils.utils import broadcast
+from backend.utils.utils import broadcast, save_to_user_data
 from backend.config import USER_DATA_FILE, STATIC_AUDIO_DIR
+import soundfile as sf
 
 import os
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
@@ -50,11 +52,20 @@ def save_user_data(data):
     with open(USER_DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+def get_wav_duration(file_path):
+    """Returns duration of a WAV file in seconds."""
+    absolute_path = os.path.join(STATIC_AUDIO_DIR, os.path.basename(file_path))  # Convert relative URL to absolute path
+    try:
+        with sf.SoundFile(absolute_path) as f:
+            return len(f) / f.samplerate
+    except Exception as e:
+        print(f"⚠️ Error reading WAV duration: {e} (Path Tried: {absolute_path})")
+        return 5  
+
+## THIS IS RESET POSITION. LIGHT NORMAL, AUDIO SET TO 25%, MAIA LED OFF, the tablet to go to /tablet URL. 
 router.post("/start_tablet") #TODO: move the intro TTS inference to this endpoint
 async def start_tablet_phase():
     print("🚀 Starting Show!")
-    
-    #TODO: reset user data, do not load it, delete it all
 
     await asyncio.sleep(1)
     print("Go Cue 1 - Lights, Reset Tablet, Play Music")
@@ -71,10 +82,45 @@ async def start_tablet_phase():
     for light, value in lighting_cues.items():
         client.send_message(f"/lighting/{light}", value)
     await asyncio.sleep(1)
-    client.send_message("/audio/play", ["Majo.mp3", 0.25])
+    client.send_message("/audio/play/", "soundtrack")
 
-    return {"status": "Tablet Phase Started"}
+    asyncio.create_task(run_tts_only())  # fire and forget TTS
+    return {"message": "Tablet Phase Started"}
 
+@router.post("/run_tablet_tts")
+async def run_tablet_tts():
+    print("🔊 Running TTS Welcome from Tablet Phase")
+
+    tts_results = await run_tts_only()
+    print("✅ Tablet Phase TTS result:", tts_results)
+
+    save_to_user_data("intro", "maia", tts_results["llm_response"])  # Save TTS output to localDB
+    welcome_audio_path = tts_results.get("audio_url")
+    
+    if welcome_audio_path:
+        audio_duration = get_wav_duration(welcome_audio_path)
+        print(f"📏 Detected WAV duration: {audio_duration} seconds")
+    else:
+        print("⚠️ No audio file found for measuring duration!")
+        audio_duration = 5  
+        
+    await asyncio.sleep(max(audio_duration - audio_duration, 1)) # removed the audio duration check for now
+
+    ws_message = {
+        "type": "tts_audio_only",
+        "user_name": tts_results.get("user_name", "Unknown"),
+        "chosen_signet": tts_results.get("chosen_signet", "?"),
+        "audio_url": tts_results.get("audio_url", ""),
+        "llm_response": tts_results.get("text", ""),
+    }
+
+    try:
+        await broadcast(ws_message)
+        print("📡 Sent Tablet TTS WebSocket:", ws_message)
+    except Exception as e:
+        print(f"⚠️ WebSocket error in /run_tablet_tts: {e}")
+
+    return {"message": "Tablet TTS Complete", **ws_message}
 
 
 @router.post("/activate")

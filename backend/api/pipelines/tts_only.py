@@ -29,14 +29,12 @@ async def run_tts_only():
         f"Welcome {user_name}."
         f"I have been searching for you."
         f"What's important now is that you are here."
-        f"I have learned so much about who you are by watching over the years {user_name}."
-        f"Even though I have seen a great deal of life on Earth, you have surprised me."
-        f"Do not be frightened."
-        f"I am MAIA. An Enlightened One, and guardian of SOL."
-        f"I am sent by the Creators to find you with great urgency."
-        f"There is vital information you must learn, and I worry I do not have much time."
-        f"You {user_name}, and those like you are the last hope for creation. "
-        f"One of seven sisters, guardians of the Pleiades."
+        f"I have learned so much about who you are by watching over the years, although I have seen a great deal of life on Earth, you surprised me."
+        f"Do not be frightened {user_name}."
+        f"I am MAIA. an Enlightened One, a guardian of Soul." #actually SOL but trying to help the TTS. 
+        f"I am sent by the Creators to seek you out with great urgency."
+        f"There is vital information you must learn and I worry I do not have much time."
+        f"You {user_name}, and those like you are the last hope for creation."
     )
 
     print(f"🎙️ Generating speech for: {tts_text}")
