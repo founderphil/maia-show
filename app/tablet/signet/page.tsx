@@ -9,6 +9,7 @@ export default function SignetSelection() {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [activated, setActivated] = useState(false);
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);  
 
   useEffect(() => {
     // Retrieve user name from session storage
@@ -45,6 +46,8 @@ export default function SignetSelection() {
       alert("Complete all selections first!");
       return;
     }
+
+    setIsLoading(true);
 
     // Save user signet
     const response = await fetch("/api/proxy", {
@@ -101,6 +104,7 @@ export default function SignetSelection() {
           <button onClick={handleActivate} className="mt-4 px-4 py-2 bg-purple-500 rounded">
             Activate
           </button>
+          {isLoading && <p className="text-white mt-4 animate-pulse">Welcome {userName} - I will be with you soon...</p>}
         </>
       ) : (
         <div className="fixed inset-0 flex items-center justify-center bg-black text-white text-4xl font-bold animate-fadeOut zoom-out">
