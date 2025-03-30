@@ -1,26 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 
 interface PhaseNavigationProps {
   activePhase: string;
   onPhaseChange: (phase: string) => void;
 }
 
-export default function PhaseNavigation({ activePhase, onPhaseChange }: PhaseNavigationProps) {
-  const phases = ["tablet", "intro", "lore & Qs", "assignment", "departure"];
+const phases = [
+  { label: "Tablet", value: "tablet" },
+  { label: "Intro", value: "intro" },
+  { label: "Lore", value: "lore" },
+  { label: "Assignment", value: "assignment" },
+  { label: "Departure", value: "departure" },
+];
 
+export default function PhaseNavigation({ activePhase, onPhaseChange }: PhaseNavigationProps) {
   return (
-    <div className="flex space-x-2 mb-4">
+    <div className="flex space-x-2">
       {phases.map((phase) => (
         <button
-          key={phase}
-          onClick={() => onPhaseChange(phase)}
-          className={`px-4 py-2 rounded border-2 border-[var(--button-bg)] transition duration-300
-            ${activePhase === phase ? "bg-purple-600 text-white" : "bg-transparent text-[var(--text-primary)]"}
-          `}
+          key={phase.value}
+          onClick={() => onPhaseChange(phase.value)}
+          className={`px-4 py-2 rounded border transition-all duration-150 ${
+            activePhase === phase.value
+              ? "bg-white text-black border-white"
+              : "bg-transparent text-white border-white hover:bg-white hover:text-black"
+          }`}
         >
-          {phase.toUpperCase()}
+          {phase.label}
         </button>
       ))}
     </div>
