@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from backend.api.phases.tablet_phase import start_tablet_phase
 from backend.api.phases.intro_phase import start_intro_phase
 from backend.api.phases.lore_phase import start_lore_phase
-from backend.api.phases.assign_phase import start_assign_phase
+from backend.api.phases.assignment_phase import start_assignment_phase
 from backend.api.phases.depart_phase import start_depart_phase
 from backend.api.websocket_manager import ws_manager
 import json
@@ -63,7 +63,7 @@ PHASE_FUNCTIONS = {
     "tablet": start_tablet_phase,
     "intro": start_intro_phase,
     "lore": start_lore_phase,
-    "assignment": start_assign_phase,
+    "assignment": start_assignment_phase,
     "departure": start_depart_phase,
 }
 

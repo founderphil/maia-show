@@ -19,23 +19,24 @@ def load_user_data():
         data = json.load(file)
         return data.get("user", {"userName": "Querent"}) 
 
-async def run_tts_only():
+async def run_tts_only(tts_text: str = None, filename: str = OUTPUT_FILENAME):
     """Runs the TTS pipeline using user data and predefined text"""
     user_data = load_user_data()
     user_name = user_data.get("userName", "Querent")
     chosen_signet = user_data.get("chosenSignet", "★") 
+    if tts_text is None:
 
-    tts_text = (
-        f"Welcome {user_name}."
-        f"I have been searching for you."
-        f"What's important now is that you are here."
-        f"I have learned so much about who you are by watching over the years, although I have seen a great deal of life on Earth, you surprised me."
-        f"Do not be frightened {user_name}."
-        f"I am MAIA. an Enlightened One, a guardian of Soul." #actually SOL but trying to help the TTS. 
-        f"I am sent by the Creators to seek you out with great urgency."
-        f"There is vital information you must learn and I worry I do not have much time."
-        f"You {user_name}, and those like you are the last hope for creation."
-    )
+        tts_text = (
+            f"Welcome {user_name}."
+            f"I have been searching for you."
+            f"What's important now is that you are here."
+            f"I have learned so much about who you are by watching over the years, although I have seen a great deal of life on Earth, you surprised me."
+            f"Do not be frightened {user_name}."
+            f"I am MAIA. an Enlightened One, a guardian of Soul." #actually SOL but trying to help the TTS. 
+            f"I am sent by the Creators to seek you out with great urgency."
+            f"There is vital information you must learn and I worry I do not have much time."
+            f"You {user_name}, and those like you are the last hope for creation."
+        )
 
     print(f"🎙️ Generating speech for: {tts_text}")
 
