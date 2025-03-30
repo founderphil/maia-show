@@ -17,13 +17,13 @@ export default function ShowrunnerUI() {
   const [latestVision, setLatestVision] = useState<{ emotion: string; posture: string }>({ emotion: "Unknown", posture: "Unknown" });
 
   const [lighting, setLighting] = useState({
-    maiaLED: 50,
-    houseLight1: 80,
-    houseLight2: 100,
-    chairSpot: 80,
-    maiaSpot1: 80,
-    maiaSpot2: 80,
-    maiaProjector1: 0,
+    maiaLED: 10,
+    houseLight1: 20,
+    houseLight2: 30,
+    chairSpot: 40,
+    maiaSpot1: 50,
+    maiaSpot2: 60,
+    maiaProjector1: 70,
     maiaProjector2: 80,
   });
 
@@ -113,6 +113,26 @@ export default function ShowrunnerUI() {
     sendWebSocketMessage({ type: "lighting_update", light, value });
   };
 
+  const handlePhaseChange = async (phase: string) => {
+    setActivePhase(phase); // optional UI highlight
+  
+    try {
+      const response = await fetch("/api/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pathname: "/start_phase",
+          body: { phase },
+        }),
+      });
+  
+      const result = await response.json();
+      console.log("✅ Phase started:", result);
+    } catch (error) {
+      console.error("❌ Failed to start phase:", error);
+    }
+  };
+
   return (
     <div className="p-4 min-h-screen bg-[var(--bg-dark)] text-[var(--text-primary)]">
       {/* Top Controls */}
@@ -127,7 +147,7 @@ export default function ShowrunnerUI() {
 
       {/* Phase Navigation */}
       <div className="flex space-x-4 mb-4">
-        <PhaseNavigation activePhase={activePhase} onPhaseChange={changePhase} />
+        <PhaseNavigation activePhase={activePhase} onPhaseChange={handlePhaseChange} />
         <AIPipelineControls onAiCommand={(pipeline) => sendWebSocketMessage({ type: "ai_command", pipeline, command: "start" })} />
       </div>
 
