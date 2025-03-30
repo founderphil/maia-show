@@ -2,6 +2,8 @@ from pythonosc.udp_client import SimpleUDPClient
 from backend.api.websocket_manager import WebSocketManager
 import os
 import json
+import soundfile as sf
+from backend.config import STATIC_AUDIO_DIR
 
 ws_manager = WebSocketManager()
 
@@ -56,3 +58,18 @@ async def broadcast(message: dict):
             await client.send_text(json.dumps(message))
         except Exception:
             clients.remove(client)
+
+# Function to get the duration of a WAV file - Returns duration of a WAV file in seconds as float.
+def get_wav_duration(file_path: str, fallback: float = 5.0) -> float:
+
+    absolute_path = (
+        file_path if os.path.isabs(file_path)
+        else os.path.join(STATIC_AUDIO_DIR, os.path.basename(file_path))
+    )
+
+    try:
+        with sf.SoundFile(absolute_path) as f:
+            return len(f) / f.samplerate
+    except Exception as e:
+        print(f"⚠️ Error reading WAV duration: {e} (Path Tried: {absolute_path})")
+        return fallback
