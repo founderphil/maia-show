@@ -31,9 +31,8 @@ import json
 import asyncio
 from fastapi import APIRouter
 from backend.api.pipelines.cv2_tts import run_cv2_tts
-from backend.api.pipelines.inference import run_cv2stt_llm_tts
 from pythonosc.udp_client import SimpleUDPClient
-from backend.utils.utils import broadcast, save_to_user_data
+from backend.utils.utils import broadcast, save_to_user_data, get_wav_duration
 from backend.config import BASE_DIR, USER_DATA_FILE
 
 router = APIRouter()
@@ -72,36 +71,26 @@ async def start_intro_phase():
         client.send_message(f"/lighting/{light}", value)
     client.send_message("/audio/play/music/", "soundtrack")
     client.send_message("/audio/play/voice/", "maia_output_welcome.wav")
+    welcome_audio_duration = get_wav_duration("maia_output_welcome.wav")
     await asyncio.sleep(1)
+    #await asyncio.sleep(max(welcome_audio_duration, 1))
 
-    #16. CV2 active, user changs from standing to sitting posture
+    #16. CV2 active, user changs from standing to sitting posture, comment on their appearance
     print("1️⃣ Generate Emotion & Posture-based Dynamic Mention")
     cv2_tts_results = await run_cv2_tts()
     save_to_user_data("intro", "maia", cv2_tts_results["llm_response"])
-    await asyncio.sleep(1)
-
-    print("2️⃣ Go Full LLM-based Interaction")
-    cv2stt_llm_tts_results = await run_cv2stt_llm_tts()
-    save_to_user_data("intro", "user", cv2stt_llm_tts_results["transcription"])
-    save_to_user_data("intro", "maia", cv2stt_llm_tts_results["llm_response"])
-
-    cv2_audio_filename = os.path.basename(cv2_tts_results["audio_url"])
-    llm_audio_filename = os.path.basename(cv2stt_llm_tts_results["audio_url"])
-    captured_image_filename = "captured.png"
-
+    welcome_audio_duration = get_wav_duration("maia_output_welcome.wav")
+    await asyncio.sleep(max(welcome_audio_duration, 1))
     print(f"CV2-TTS Output: {cv2_tts_results}")
-    print(f"CV2STT-LLM-TTS Output: {cv2stt_llm_tts_results}")
-
+    cv2_audio_filename = os.path.basename(cv2_tts_results["audio_url"])
+    captured_image_filename = "captured.png"
+    
     ws_message = {
         "type": "phase_intro",
         "phase": "intro",
         "message": "Phase 2 - Intro Started",
         "user_name": user_name,
         "cv2_audio": f"/static/audio/{cv2_audio_filename}",
-        "llm_audio": f"/static/audio/{llm_audio_filename}",
-        "audio_url": f"/static/audio/{llm_audio_filename}",
-        "transcription": cv2stt_llm_tts_results.get("user_question", ""),
-        "llm_response": cv2stt_llm_tts_results.get("llm_response", ""),
         "vision_image": f"/static/{captured_image_filename}",
         "vision_emotion": cv2_tts_results.get("emotion", "Unknown"),
         "vision_posture": cv2_tts_results.get("posture", "Unknown"),
