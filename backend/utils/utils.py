@@ -23,24 +23,21 @@ def load_user_data():
             return json.load(f)
     return {}
 
-def save_to_user_data(phase, speaker, text):
-    """
-    Saves text to `user_data.json` under the correct key format:
-    - `{phase}.user_input_X`  (for STT user inputs)
-    - `{phase}.maia_output_X` (for TTS AI responses)
-    """
+#saves text to user_data.json under the correct key format, otherwise increments
+def save_to_user_data(phase, speaker, text, index=None):
     user_data = load_user_data()
     user = user_data.get("user", {})
 
-    # standarized naming convention for user and maia outputs
-    key_prefix = f"{phase}.{'user_input' if speaker == 'user' else 'maia_output'}"
-
-    # Find the next available ID
-    existing_keys = [k for k in user.keys() if k.startswith(key_prefix)]
-    next_id = len(existing_keys) + 1
-    key = f"{key_prefix}_{next_id}"
-
-    # Save to JSON
+    key_type = "user_input" if speaker == "user" else "maia_output"
+    key_prefix = f"{phase}.{key_type}"
+    
+    if index is None:
+        existing_keys = [k for k in user.keys() if k.startswith(key_prefix)]
+        next_id = len(existing_keys) + 1
+        key = f"{key_prefix}_{next_id}"
+    else:
+        key = f"{key_prefix}_{index}"
+    
     user[key] = text
     user_data["user"] = user
 
@@ -49,9 +46,8 @@ def save_to_user_data(phase, speaker, text):
 
     print(f"✅ Saved to user_data.json: {key} -> {text}")
 
-# Function to broadcast messages via WebSocket
+# WebSockets
 async def broadcast(message: dict):
-    """Broadcasts messages to all connected WebSocket clients."""
     import json
     for client in clients:
         try:
@@ -59,7 +55,7 @@ async def broadcast(message: dict):
         except Exception:
             clients.remove(client)
 
-# Function to get the duration of a WAV file - Returns duration of a WAV file in seconds as float.
+# WAV file duration - Returns duration of a WAV file in seconds as float.
 def get_wav_duration(file_path: str, fallback: float = 5.0) -> float:
 
     absolute_path = (

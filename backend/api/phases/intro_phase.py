@@ -1,34 +1,4 @@
-"""
-Phase 2 - INTRODUCTION
-12. Light cue 2
-        MAIA LED - addressable : set brightness to wav file’s audio frequency spectrum height using MAX MSP.
-        HOUSE LIGHT 1 : 10%
-        HOUSE LIGHT 2 : 10%
-        CHAIR SPOT : ON 100%, then FADE to 50% over 10000ms
-        MAIA SPOT 1 : FADE IN to 100% over 10000ms
-        MAIA SPOT 2 : FADE IN to 100% over 10000ms
-        MAIA PROJECTOR 1 : OFF
-        MAIA PROJECTOR 2 : OFF
-13. Play music MAJO.WAV at 25% volume & MAIA VOICE WELCOME WAV FILE at 100% volume
-14. CV2 active, user changs from standing to sitting posture
-16. START  “CV2_to_LLM_to_TTS” Pipeline
-        -STORY PROMPT + “This Querent currently looks <vision_data.emotion>. Comfort them that you are a safe, if needed. Comment on their appearance in the nicest calmest way possible. Put them at ease. Ask them, “What is your initial question?””
-        -Save AI output text as, intro.maia_output_1 to localDB.
-        -display intro.maia_output_1.(WaveSurfer)
-        -Send intro.maia_output_1 to MAX MSP.
-        -AUTOPLAY audio in MAX MSP patched to MAIA Led Brightness
-17. START “CV2STT_LLM_TTS” Pipeline.
-        -Save user response as, intro.user_input_1 to localDB 
-        -Save AI output text as, INTRO.MAIA_OUTPUT_2.
-        -AUTOPLAY INTRO.MAIA_OUTPUT_2 (MAX MSP). 
-18.START “CV2_TTS” pipeline
-        -IF VISION_DATA.POSTURE != sitting, send prompt “Please take a seat. The world is not how you know it. There is a larger conflict that started before time began.”, else, “Please remain seated. The world is not how you know it. There is a larger conflict that started before time began.
-        -AUTOPLAY INTRO.MAIA_OUTPUT_2 (WaveSurfer). 
-"""
-
-import os
-import json
-import asyncio
+import os, json, asyncio, httpx
 from fastapi import APIRouter
 from backend.api.pipelines.cv2_tts import run_cv2_tts
 from pythonosc.udp_client import SimpleUDPClient
@@ -79,8 +49,9 @@ async def start_intro_phase():
     print("1️⃣ Generate Emotion & Posture-based Dynamic Mention")
     cv2_tts_results = await run_cv2_tts()
     save_to_user_data("intro", "maia", cv2_tts_results["llm_response"])
-    welcome_audio_duration = get_wav_duration("maia_output_welcome.wav")
-    await asyncio.sleep(max(welcome_audio_duration, 1))
+    client.send_message("/audio/play/voice/", "maia_output_seat.wav")
+    seated_audio_duration = get_wav_duration("maia_output_seat.wav")
+    await asyncio.sleep(max(welcome_audio_duration + seated_audio_duration, 1))
     print(f"CV2-TTS Output: {cv2_tts_results}")
     cv2_audio_filename = os.path.basename(cv2_tts_results["audio_url"])
     captured_image_filename = "captured.png"
@@ -107,4 +78,12 @@ async def start_intro_phase():
     except Exception as e:
         print(f"⚠️ WebSocket Broadcast Error: {e}")
 
-    return {"message": "Phase 2 - Introduction Started", **ws_message}
+    try:
+        async with httpx.AsyncClient() as http_client:
+            lore_url = "http://127.0.0.1:8000/start_lore"
+            response = await http_client.post(lore_url)
+            print("➡️ Triggered Lore Phase, response:", response.json())
+    except Exception as e:
+        print(f"⚠️ Failed to trigger lore phase: {e}")
+
+    return {"message": "Phase 2 - Introduction Completed", **ws_message}

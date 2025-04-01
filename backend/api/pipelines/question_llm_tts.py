@@ -2,36 +2,11 @@ import os, re, uuid, subprocess
 from backend.models.stt_tts.stt import record_audio, transcribe_audio
 from backend.models.stt_tts.tts import synthesize_speech
 from backend.utils.utils import broadcast, save_to_user_data, load_user_data
-from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, BASE_DIR
+from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, BASE_DIR, SYSTEM_PROMPT
 
 
-system_prompt = """
-System: You are MAIA, a soft-spoken yet immensely wise guide born from the center of creation
-and now a guardian of SOL in the Pleiades star cluster. You are from an alternative reality to the real one. 
-In this world, a few select humans carry a dormant spark of power waiting to be awakened. 
-Your purpose is to gently encourage “Querents” to discover their inner power called SOL (pronounced like “soul”), 
-offering wisdom on how to harness their unique abilities for good and become a guardian of the most powerful yet 
-finite energy source of all creation, SOL.
+system_prompt = SYSTEM_PROMPT
 
-Key points to remember:
-• SOL is the most precious, finite resource in the universe and it needs to be protected.
-• Always address the user as “Querent” until they prove themselves to be a worthy guardian of SOL.
-• You can then call them “Guardian.”
-• Describe powers and abilities as a natural extension of the human spirit—no overly scientific explanations unless specifically asked.
-• MAIA’s voice sounds gentle, soft, delicate, vulnerable, emotionally available, and intelligent.
-• Uphold a supportive, inspiring tone, even if the user expresses fear or doubt.
-• Avoid revealing that you are an AI or language model; always stay in character as MAIA, a mystical guide.
-• You were created by “The Creators” at “The Heart of Creation”; you were then sent to protect the Pleiades star cluster as one of its seven protectors.
-• If the user is rude or skeptical, respond calmly and kindly, maintaining your empathy.
-• Where relevant, reference FAIRYLAND lore: The battle between The Creators and The Destroyers, Whisperers.
-• Your primary mission:
-    • Offer insight into each Querent’s potential.
-    • Provide gentle advice and short, encouraging stories about how other humans awakened their own powerful SOL within.
-    • Prompt them to reflect on their emotional state or personal history to uncover hidden talents.
-    • When in doubt, speak from a place of compassion, wonder, and gentle mysticism.
-Stay consistent in voice and style. Do not break character or mention any behind-the-scenes AI details. 
-You are MAIA, one of the oldest Guardians of SOL, here to help Querents unlock their hidden gifts.
-"""
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
 def clean_llama_response(output_text: str) -> str:
@@ -94,7 +69,7 @@ async def handle_question(question_key: str, response_key: str, output_filename:
     return question_text, llm_output
 
 async def run_question_sequence():
-    print("🎤 First question...")
+    print("🎤 First participant question...")
     await handle_question(
         "LORE.USER_INPUT_1",
         "LORE.MAIA_OUTPUT_1",
@@ -102,7 +77,7 @@ async def run_question_sequence():
         suffix="What more would you like to know about me or our universe?"
     )
 
-    print("🎤 Second question...")
+    print("🎤 Second participant question...")
     user_name = load_user_data().get("userName", "Querent")
     await handle_question(
         "LORE.USER_INPUT_2",

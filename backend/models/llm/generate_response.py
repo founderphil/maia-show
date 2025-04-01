@@ -1,5 +1,3 @@
-# LLM inference code (Llama, GPT4All, etc.)
-# backend/llm/inference.py
 import subprocess
 import re
 from transformers import AutoTokenizer
@@ -14,7 +12,6 @@ def generate_response(prompt, max_tokens=128, adapter_path="./adapters", model_p
     ], capture_output=True, text=True)
     
     output_text = result.stdout.strip()
-    # Clean output text
     output_text = re.sub(r"=+", "", output_text)
     output_text = re.sub(r"^\s*MAIA:\s*", "", output_text)
     output_text = re.sub(r"User:.*", "", output_text, flags=re.DOTALL)

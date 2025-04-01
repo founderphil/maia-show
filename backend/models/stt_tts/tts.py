@@ -21,7 +21,14 @@ from TTS.tts.models.xtts import XttsArgs
 if hasattr(torch.serialization, "add_safe_globals"):
     torch.serialization.add_safe_globals([XttsConfig, XttsAudioConfig, BaseDatasetConfig, XttsArgs])
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else (
+    "mps" if torch.backends.mps.is_available() and torch.backends.mps.is_built() else "cpu"
+)
+
+# Check if the operation may fail on MPS
+if device == "mps":
+    print("⚠️ MPS backend has known issues with spectrograms. Using CPU instead.")
+    device = "cpu"
 print(f"🔹 Using device: {device}")
 
 tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")

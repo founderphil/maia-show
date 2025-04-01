@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from pythonosc.udp_client import SimpleUDPClient
-from backend.api.pipelines.assignment_sequence import run_assignment_sequence
+from backend.api.pipelines.assignment_sequence import run_assignment_phase
 
 router = APIRouter()
 OSC_IP = "127.0.0.1"
@@ -12,7 +12,7 @@ async def start_assignment_phase():
     print("🚀 Phase 4: Assignment started")
     client.send_message("/phase/assignment", 1)
 
-    assignment = await run_assignment_sequence()
-    print(f"🌍 Assigned: Guardian of {assignment}")
+    assignment = await run_assignment_phase()
+    print(f"🌍 Assigned: {assignment}")
 
     return {"message": "Assignment phase complete", "assignment": assignment}

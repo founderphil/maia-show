@@ -8,6 +8,14 @@
 *.mp3
 user_data.json
 captured.png
+ascii_title.png
+printable_certificate.png
+certificate.txt
+
+#VO protection
+patricia_full.wav
+patricia_full.pkf
+
 
 # dependencies
 /node_modules

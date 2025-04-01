@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from backend.api.phases.tablet_phase import start_tablet_phase
 from backend.api.phases.intro_phase import start_intro_phase
-from backend.api.phases.lore_phase import start_lore_phase
+from backend.api.phases.lore_phase import start_lore_phase, audio_done_event
 from backend.api.phases.assignment_phase import start_assignment_phase
-from backend.api.phases.depart_phase import start_depart_phase
+from backend.api.phases.depart_phase import start_departure_phase
 from backend.api.websocket_manager import ws_manager
 import json
 import os
@@ -64,7 +64,7 @@ PHASE_FUNCTIONS = {
     "intro": start_intro_phase,
     "lore": start_lore_phase,
     "assignment": start_assignment_phase,
-    "departure": start_depart_phase,
+    "departure": start_departure_phase,
 }
 
 @router.post("/start_phase")
@@ -84,3 +84,9 @@ async def start_phase(data: dict):
         return {"message": f"Phase '{phase}' started successfully", **response}
 
     return {"error": f"Phase '{phase}' does not exist."}
+
+@router.post("/osc/audio_done")
+async def handle_audio_done():
+    print("✅ MAX MSP: Audio playback done signal received")
+    audio_done_event.set()
+    return {"status": "received"}

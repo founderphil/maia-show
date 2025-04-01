@@ -1,54 +1,107 @@
-"""
-Phase 5 - Departure
-34. Light cue 6
-        MAIA LED - addressable : color gold mixed with purple. All led lights are flickering.
-        HOUSE LIGHT 1 : ON flicker 10% to 50%
-        HOUSE LIGHT 2 : ON flicker 10% to 50%
-        CHAIR SPOT : OFF
-        MAIA SPOT 1 : ON flicker 10% to 50%
-        MAIA SPOT 2 : ON flicker 10% to 50%
-        MAIA PROJECTOR 1 : OFF
-        MAIA PROJECTOR 2 : OFF
-35. Play DEPARTURE.WAV
-36. START “GUARDIAN” Pipeline
--Load LLM model with knowledge of celestial and terrestrial objects 
--Send LLM assignment.themes_1 + assignment.themes_2 + assignment.themes_3 + “Uses a zero-shot classification pipeline to infer the most likely theme.”
--Save assigned location to profile_data.guardian_assignment 
-37. Light cue 1 [return to cue 1 for next guest]
-38. Play music MAJO.WAV at 100% volume
-39. Process text to send to printer connected in the room.
-        <name>. 
-        IT IS WITH HONOR THAT YOU ARE A GUARDIAN OF SOL.
-        GO FORTH GUARDIAN. YOUR ANSWERS HAVE DEEMED YOU THE PROTECTOR OF SOL OF THE <profile_data.guardian_assignemnt>. 
-        SPREAD YOUR LIGHT TO OTHERS - TEAR THE BOTTOM OF THIS MESSAGE AND WRITE YOUR OWN TO INSPIRE OTHER GUARDIANS OF SOL.
-        WE SHALL MEET AGAIN.
-        MAIA
-        —------------------------
-        Send data to printer. Print.
-        
-40. POSTSHOW Post show data permissions sends data to a cloud to create a user and save selected data from a list.
-
-"""
-
-from fastapi import APIRouter
+import os
 import asyncio
+import subprocess
+from fastapi import APIRouter
+from backend.api.pipelines.tts_only import run_tts_only
+from backend.utils.utils import load_user_data
+from backend.config import STATIC_AUDIO_DIR
 from pythonosc.udp_client import SimpleUDPClient
 
+from pyfiglet import Figlet
+from PIL import Image, ImageDraw, ImageFont
+
 router = APIRouter()
+client = SimpleUDPClient("127.0.0.1", 7400)
 
-# OSC Client Setup
-OSC_IP = "127.0.0.1"
-OSC_PORT = 7400
-client = SimpleUDPClient(OSC_IP, OSC_PORT)
+def generate_combined_certificate(user_name, final_title, ascii_img_path, certificate_text_path, output_path="static/images/printable_certificate.png"):
 
-@router.post("/start_depart")
-async def start_depart_phase():
-    print("🚀 Starting Phase 5: Departure")
+    ascii_img = Image.open(ascii_img_path).convert("RGB")
+    ascii_width, ascii_height = ascii_img.size
+    portrait_width = 2480  
+    portrait_height = 3508 
+    combined = Image.new("RGB", (portrait_width, portrait_height), "white")
+    draw = ImageDraw.Draw(combined)
+    ascii_scale = portrait_width * 0.9 / ascii_width
+    resized_ascii = ascii_img.resize(
+        (int(ascii_width * ascii_scale), int(ascii_height * ascii_scale))
+    )
+    ascii_x = (portrait_width - resized_ascii.width) // 2
+    combined.paste(resized_ascii, (ascii_x, 100))
 
-    # Send OSC signal to MAX MSP
-    client.send_message("/phase/depart", 1)
+    # Load font
+    try:
+        font = ImageFont.truetype("Courier_New.ttf", 48)
+    except:
+        font = ImageFont.load_default()
+    with open(certificate_text_path, "r") as f:
+        lines = f.readlines()
 
-    # Simulate a delay for transition
-    await asyncio.sleep(1)
+    y_start = resized_ascii.height + 200
+    x_margin = 200
+    y = y_start
 
-    return {"message": "Depart Phase Started"}
+    for line in lines:
+        draw.text((x_margin, y), line.strip(), fill="black", font=font)
+        y += 70
+
+    combined.save(output_path)
+    print(f"🖼️ Portrait certificate saved: {output_path}")
+    subprocess.run(["lp", output_path])
+
+@router.post("/start_departure")
+async def start_departure_phase():
+    print("🌌 Phase 5: Departure")
+
+    user_data = load_user_data()
+    user_name = user_data.get("user", {}).get("userName", "Querent")
+    final_title = user_data.get("assignment", {}).get("full_title", "Guardian of Unknown")
+    ascii_title = user_data.get("assignment", {}).get("title", "Unknown Realm")
+
+    farewell_text = (
+        f"I see the light of SOL within you {user_name}. "
+        f"Your talents shine through you like a neutron star. "
+        f"It is with great honor, on behalf of all the Enlightened Ones, to knight you a guardian of SOL. "
+        f"Go forth, Guardian. And remember that the light will always outshine the darkness."
+    )
+
+    # Speak farewell message
+    await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
+    client.send_message("/audio/play/voice/", "maia_departure.wav")
+    await asyncio.sleep(10)
+
+    # Lights cue
+    lighting_off = {
+        "maiaLED": 0,
+        "houseLight1": 100,
+        "houseLight2": 100,
+        "chairSpot": 0,
+        "maiaSpot1": 0,
+        "maiaSpot2": 0,
+        "maiaProjector1": 0,
+        "maiaProjector2": 0,
+    }
+    for light, value in lighting_off.items():
+        client.send_message(f"/lighting/{light}", value)
+
+    certificate_text = f"""
+{user_name}.
+THE ENLIGHTENED ONES HAVE DEEMED YOU A GUARDIAN OF SOL.
+IT IS NOW YOUR DUTY TO PROTECT THE LIGHT OF CREATION.
+
+YOU ARE THE {final_title.upper()}
+
+I AM HERE FOR YOU.
+MAIA
+—------------------------
+Leave your message for a fellow guardian.
+—------------------------
+    """.strip()
+
+    print_path = os.path.join(STATIC_AUDIO_DIR, "certificate.txt")
+    with open(print_path, "w") as f:
+        f.write(certificate_text)
+
+    # Create and print combined image
+    generate_combined_certificate(user_name, final_title, "static/images/ascii_title.png", print_path)
+
+    return {"message": "Phase 5 - Departure completed."}

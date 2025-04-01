@@ -1,27 +1,3 @@
-"""
-Phase 1- TABLET
-1.  Light cue 1
-        MAIA LED : OFF 
-        HOUSE LIGHT 1 : ON 100%
-        HOUSE LIGHT 2 : ON 100%
-        CHAIR SPOT : OFF
-        MAIA SPOT 1 : OFF
-        MAIA SPOT 2 : OFF
-        MAIA PROJECTOR 1 : OFF
-        MAIA PROJECTOR 2: OFF
-2.  Play music MAJO.WAV at 25% volume
-3.  HOST “TABLET UI” LOCALLY
-4.  PLAY AUDIO: PRESHOW_VOICE_1 WAV FILE, on “TABLET UI” 
-5.  IF TABLET PICKED UP, STOP PRESHOW_VOICE_1 WAV FILE
-6.  “Tablet UI” input field, “what can i call you?”; SAVE VALUE TO FIELD: profile_data.NAME
-7.  “Tablet UI” asks, “what calls to you”, user selects color;SAVE VALUE TO FIELD: profile_data.COLOR
-8.  Tablet UI asks, “what calls to you”, user selects signet. SAVE VALUE TO FIELD: profile_data.SIGNET
-9.  Activate button is now show on “TABLET UI” activated
-10. User presses activate; START Phase 2 - Introduction; OSC INTRO.START SIGNAL TO CHANGE FROM 0 TO 1
-11. Play music MAJO.WAV at 50% volume
-
-"""
-
 import asyncio
 import json
 from fastapi import APIRouter
@@ -82,7 +58,7 @@ async def start_tablet_phase():
     for light, value in lighting_cues.items():
         client.send_message(f"/lighting/{light}", value)
     await asyncio.sleep(1)
-    client.send_message("/audio/play/", "soundtrack")
+    client.send_message("/audio/play/music/", "soundtrack")
 
     asyncio.create_task(run_tts_only())  # fire and forget TTS
     return {"message": "Tablet Phase Started"}
@@ -91,7 +67,7 @@ async def start_tablet_phase():
 async def run_tablet_tts():
     print("🔊 Running TTS Welcome from Tablet Phase")
 
-    tts_results = await run_tts_only()
+    tts_results = await run_tts_only(filename="maia_output_welcome.wav")
     print("✅ Tablet Phase TTS result:", tts_results)
 
     save_to_user_data("intro", "maia", tts_results["llm_response"])  # Save TTS output to localDB
@@ -127,11 +103,6 @@ async def run_tablet_tts():
 async def activate():
     """✨ Final step when user presses 'Activate' in Tablet UI."""
     print("✨ User pressed Activate! Advancing to Phase 2 - Introduction.")
-
-
-    client.send_message("/audio/play", ["Majo.mp3", 0.50])
-
-
     client.send_message("/phase/start", "intro")
 
 
