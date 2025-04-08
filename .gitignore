@@ -1,7 +1,11 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Ignore large model data
 *.safetensors
 *.pth
+
+# ignore large video
+Maia_Lore_cut.mp4
 
 #User Data files
 *.wav
