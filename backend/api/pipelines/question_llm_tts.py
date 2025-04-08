@@ -1,20 +1,31 @@
-import os, re, uuid, subprocess
+import os, re, uuid, subprocess, re, asyncio
 from backend.models.stt_tts.stt import record_audio, transcribe_audio
 from backend.models.stt_tts.tts import synthesize_speech
-from backend.utils.utils import broadcast, save_to_user_data, load_user_data
+from backend.utils.utils import broadcast, save_to_user_data, load_user_data, get_wav_duration
 from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, BASE_DIR, SYSTEM_PROMPT
+from pythonosc.udp_client import SimpleUDPClient
 
+# OSC Client Setup
+OSC_IP = "127.0.0.1"
+OSC_PORT = 7400
+client = SimpleUDPClient(OSC_IP, OSC_PORT)
 
 system_prompt = SYSTEM_PROMPT
 
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
+
 def clean_llama_response(output_text: str) -> str:
-    output_text = re.sub(r"=+", "", output_text).strip()
-    output_text = re.sub(r"Prompt:.*|Generation:.*|Peak memory:.*", "", output_text)
-    output_text = re.sub(r"Querent:.*", "", output_text).strip()
-    match = re.search(r"MAIA:\s*(.*?)$", output_text, re.DOTALL)
-    return match.group(1).strip() if match else output_text
+    parts = output_text.split("==========")
+    if len(parts) > 1:
+        answer_text = parts[1].strip()
+    else:
+        answer_text = output_text.strip()
+    sentences = re.split(r'(?<=[.!?])\s+', answer_text)
+    
+    limited_output = ' '.join(sentences[:2])
+    
+    return limited_output
 
 def run_llm(prompt: str) -> str:
     model_path = os.path.join(BASE_DIR, "backend/models/llm/llama3_mlx")
@@ -40,7 +51,8 @@ async def handle_question(question_key: str, response_key: str, output_filename:
     question_text = transcribe_audio(audio_path)
 
     # Run LLM
-    prompt = f"{system_prompt}\nUser: {question_text}\n\nMAIA:"
+    print(f"🔍 LLM Input: {question_text}")
+    prompt = f"{system_prompt}\nUser Question to you that you should answer: {question_text}\n\nMAIA:"
     llm_output = run_llm(prompt)
 
     # Append suffix if provided
@@ -51,6 +63,15 @@ async def handle_question(question_key: str, response_key: str, output_filename:
     tts_path = os.path.join(STATIC_AUDIO_DIR, output_filename)
     synthesize_speech(text=llm_output, speaker_wav=SPEAKER_WAV, file_path=tts_path)
 
+    # Get audio duration
+    audio_duration = get_wav_duration(tts_path)
+    print(f"🔊 Audio Duration: {audio_duration} seconds")
+    await asyncio.sleep(audio_duration)
+
+    # Play audio
+    print("🔊 Playing audio...")
+    client.send_message("/audio/play/voice/", output_filename)
+    
     # Save to user_data
     save_to_user_data("lore", "user", question_text)
     save_to_user_data("lore", "maia", llm_output)

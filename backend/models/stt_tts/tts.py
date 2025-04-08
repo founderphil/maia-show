@@ -26,12 +26,13 @@ device = "cuda" if torch.cuda.is_available() else (
 )
 
 # Check if the operation may fail on MPS
-if device == "mps":
-    print("⚠️ MPS backend has known issues with spectrograms. Using CPU instead.")
-    device = "cpu"
+#if device == "mps":
+#    print("⚠️ MPS backend has known issues with spectrograms. Using CPU instead.")
+#    device = "cpu"
 print(f"🔹 Using device: {device}")
 
 tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+#tts = TTS("tts_models/multilingual/multi-dataset/your_tts")
 tts.to(device)
 
 def synthesize_speech(text: str, speaker_wav: str = SPEAKER_WAV, file_path: str = "maia_output.wav"): 
@@ -47,6 +48,7 @@ def synthesize_speech(text: str, speaker_wav: str = SPEAKER_WAV, file_path: str 
         text=input_text,
         speaker_wav=SPEAKER_WAV,
         language="en",
+        speed=50,
         file_path=file_path,
     )
 

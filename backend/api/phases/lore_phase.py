@@ -30,10 +30,11 @@ async def start_lore_phase():
     # Cue lights/audio in MAX MSP
     client.send_message("/phase/lore", 1)
 
-    client.send_message("/audio/play/voice/", "Lore_Audio.wav")
+    print("Play Lore Movie!")
+    client.send_message("/video/play/", "Maia_Lore_cut.mp4")
     patricia_path = os.path.join(STATIC_AUDIO_DIR, "Lore_Audio.wav")
     lore_duration = get_wav_duration(patricia_path)
-    print("🔊 Playing THE LORE STORY in MAX MSP, next generate inference...")
+    print("🔊 Playing THE LORE STORY VIDEO in MAX MSP, next generate inference...")
 
     user_data = load_user_data()
     user_name = user_data.get("userName", "Querent")
@@ -49,13 +50,15 @@ async def start_lore_phase():
     tts_result = await run_tts_only(tts_text=scripted_text, filename="maia_lore_Q_intro.wav")
     save_to_user_data("lore", "maia", tts_result["llm_response"])
     print("⏳ Waiting for MAX MSP to finish playing intro...")
-    audio_done_event.clear()
-    try:
-        await asyncio.wait_for(audio_done_event.wait(), timeout=60)
-    except asyncio.TimeoutError:
-        print("⚠️ Timeout waiting for MAX MSP. Proceeding anyway.")
-    #await asyncio.sleep(duration)
+    await asyncio.sleep(66)
+    #audio_done_event.clear()
+    #try:
+    #    await asyncio.wait_for(audio_done_event.wait(), timeout=lore_duration)
+    #except asyncio.TimeoutError:
+    #    print("⚠️ Timeout waiting for MAX MSP. Proceeding anyway.")
+    #await asyncio.sleep(lore_duration)
     client.send_message("/audio/play/voice/", "maia_lore_Q_intro.wav")
+    await asyncio.sleep(22)
     
 
     await broadcast({
@@ -65,8 +68,6 @@ async def start_lore_phase():
         "llm_response": scripted_text,
         "audio_url": "/static/audio/maia_lore_Q_intro.wav"
     })
-
-    await asyncio.sleep(8)  # let TTS audio play before questions begin
 
     # Interactive Q&A sequence
     print("✨ Entering Lore Q&A Phase")

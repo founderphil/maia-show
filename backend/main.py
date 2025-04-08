@@ -1,3 +1,4 @@
+from backend.utils.utils import ws_manager, clients, osc_client
 from fastapi import FastAPI, WebSocket
 import json
 import asyncio
@@ -10,9 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.postshow import router as postshow_router
 from backend.api.phases.show_pipeline import start_full_show 
 from backend.api.phases.intro_phase import router as intro_phase_router
-from backend.utils.utils import ws_manager, clients, osc_client
 from fastapi.staticfiles import StaticFiles
-
 app = FastAPI()
 
 app.include_router(api_router, prefix="/api")

@@ -80,7 +80,6 @@ async def run_cv2stt_llm_tts():
 
     print(f"✅ TTS Output Saved at {TTS_OUTPUT_PATH}")
 
-    # 📡 **Step 7: Broadcast WebSocket Message**
     ws_message = {
         "type": "full_inference",
         "user_question": user_question,

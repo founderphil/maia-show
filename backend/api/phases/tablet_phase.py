@@ -38,26 +38,27 @@ def get_wav_duration(file_path):
         print(f"⚠️ Error reading WAV duration: {e} (Path Tried: {absolute_path})")
         return 5  
 
-## THIS IS RESET POSITION. LIGHT NORMAL, AUDIO SET TO 25%, MAIA LED OFF, the tablet to go to /tablet URL. 
+## THIS IS RESET POSITION
 router.post("/start_tablet") #TODO: move the intro TTS inference to this endpoint
 async def start_tablet_phase():
     print("🚀 Starting Show!")
-
+######## set the lights
     await asyncio.sleep(1)
     print("Go Cue 1 - Lights, Reset Tablet, Play Music")
     lighting_cues = {
-        "maiaLED": 0,
-        "houseLight1": 100,
-        "houseLight2": 100,
+        "maiaLED": 0, # 0-255
+        "houseLight1": 1, #0 or 1, on off
+        "houseLight2": 1,
+        "floorLight1": 1,
+        "floorLight2": 1,
+        "deskLight": 1,
         "chairSpot": 0,
-        "maiaSpot1": 0,
-        "maiaSpot2": 0,
         "maiaProjector1": 0,
-        "maiaProjector2": 0,
     }
     for light, value in lighting_cues.items():
-        client.send_message(f"/lighting/{light}", value)
+        client.send_message(f"/lighting/{light}", value) ######## play soundtrack
     await asyncio.sleep(1)
+
     client.send_message("/audio/play/music/", "soundtrack")
 
     asyncio.create_task(run_tts_only())  # fire and forget TTS
@@ -67,10 +68,10 @@ async def start_tablet_phase():
 async def run_tablet_tts():
     print("🔊 Running TTS Welcome from Tablet Phase")
 
-    tts_results = await run_tts_only(filename="maia_output_welcome.wav")
+    tts_results = await run_tts_only(filename="maia_output_welcome.wav") 
     print("✅ Tablet Phase TTS result:", tts_results)
 
-    save_to_user_data("intro", "maia", tts_results["llm_response"])  # Save TTS output to localDB
+    save_to_user_data("intro", "maia", tts_results["llm_response"])
     welcome_audio_path = tts_results.get("audio_url")
     
     if welcome_audio_path:
@@ -79,8 +80,8 @@ async def run_tablet_tts():
     else:
         print("⚠️ No audio file found for measuring duration!")
         audio_duration = 5  
-        
-    await asyncio.sleep(max(audio_duration - audio_duration, 1)) # removed the audio duration check for now
+
+    await asyncio.sleep(max(audio_duration, 1)) ######## wait for welcome to finish
 
     ws_message = {
         "type": "tts_audio_only",
@@ -99,12 +100,11 @@ async def run_tablet_tts():
     return {"message": "Tablet TTS Complete", **ws_message}
 
 
-@router.post("/activate")
+@router.post("/activate") ######## pressing the button on the tablet moves to next phase
 async def activate():
     """✨ Final step when user presses 'Activate' in Tablet UI."""
     print("✨ User pressed Activate! Advancing to Phase 2 - Introduction.")
     client.send_message("/phase/start", "intro")
-
 
     ws_message = {
     "type": "phase_tablet",

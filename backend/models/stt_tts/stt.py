@@ -1,18 +1,17 @@
 # backend/stt_tts/stt.py
-import os
-import requests
-import zipfile
-import io
-import wave
-import json
+import os, requests, zipfile, io, wave, json
 from vosk import Model, KaldiRecognizer
-import pyaudio
+from pythonosc.udp_client import SimpleUDPClient
 import sounddevice as sd
 import numpy as np 
 
 SILENCE_THRESHOLD = 0.01  # Adjust based on environment noise level
 SILENCE_DURATION = 1.5  # Stop recording after 1.5s of silence
 SAMPLE_RATE = 16000  # Sample rate for Vosk STT
+
+OSC_IP = "127.0.0.1"
+OSC_PORT = 7400
+client = SimpleUDPClient(OSC_IP, OSC_PORT)
 
 def download_and_extract_model(url: str, extract_to: str = "models"):
     os.makedirs(extract_to, exist_ok=True)
@@ -58,6 +57,7 @@ def transcribe_audio(audio_file_path: str) -> str:
 def record_audio(output_filename="temp.wav", max_duration=10):
     """Records audio dynamically, stopping when silence is detected."""
     print("🎙️ Listening... Speak now.")
+    client.send_message("/lighting/MAIA/listening", 25)
 
     recording = []
     silence_start = None
@@ -81,7 +81,7 @@ def record_audio(output_filename="temp.wav", max_duration=10):
             sd.sleep(max_duration * 1000)  # Failsafe to avoid infinite recording
     except sd.CallbackStop:
         pass  # Normal exit when silence is detected
-
+    
     # Save to file
     recording = np.concatenate(recording, axis=0)
     with wave.open(output_filename, "wb") as wf:
@@ -89,7 +89,7 @@ def record_audio(output_filename="temp.wav", max_duration=10):
         wf.setsampwidth(2)
         wf.setframerate(SAMPLE_RATE)
         wf.writeframes((recording * 32767).astype(np.int16).tobytes())
-
+    client.send_message("/lighting/MAIA/listening", 255)
     print(f"✅ Recording saved: {output_filename}")
     return output_filename
 

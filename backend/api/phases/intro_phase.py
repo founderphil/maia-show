@@ -4,6 +4,7 @@ from backend.api.pipelines.cv2_tts import run_cv2_tts
 from pythonosc.udp_client import SimpleUDPClient
 from backend.utils.utils import broadcast, save_to_user_data, get_wav_duration
 from backend.config import BASE_DIR, USER_DATA_FILE
+from backend.api.phases.lore_phase import start_lore_phase
 
 router = APIRouter()
 OSC_IP = "127.0.0.1"
@@ -39,19 +40,19 @@ async def start_intro_phase():
     }
     for light, value in lighting_cues.items():
         client.send_message(f"/lighting/{light}", value)
-    client.send_message("/audio/play/music/", "soundtrack")
-    client.send_message("/audio/play/voice/", "maia_output_welcome.wav")
+
+    client.send_message("/audio/play/music/", "soundtrack")                 ######## PLAY SOUNDTRACK
+    client.send_message("/audio/play/voice/", "maia_output_welcome.wav")    ######## PLAY WELCOME audio
     welcome_audio_duration = get_wav_duration("maia_output_welcome.wav")
-    await asyncio.sleep(1)
-    #await asyncio.sleep(max(welcome_audio_duration, 1))
+    await asyncio.sleep(max(welcome_audio_duration, 1))                     ######## LISTEN to WELCOME audio
 
     #16. CV2 active, user changs from standing to sitting posture, comment on their appearance
     print("1️⃣ Generate Emotion & Posture-based Dynamic Mention")
     cv2_tts_results = await run_cv2_tts()
     save_to_user_data("intro", "maia", cv2_tts_results["llm_response"])
-    client.send_message("/audio/play/voice/", "maia_output_seat.wav")
-    seated_audio_duration = get_wav_duration("maia_output_seat.wav")
-    await asyncio.sleep(max(welcome_audio_duration + seated_audio_duration, 1))
+    client.send_message("/audio/play/voice/", "maia_output_seat.wav")  ######## PLAY SIGHT audio
+    seated_audio_duration = get_wav_duration("maia_output_seat.wav")   
+    await asyncio.sleep(max(seated_audio_duration, 1))                 ######## LISTEN to SIGHT audio
     print(f"CV2-TTS Output: {cv2_tts_results}")
     cv2_audio_filename = os.path.basename(cv2_tts_results["audio_url"])
     captured_image_filename = "captured.png"
@@ -63,8 +64,8 @@ async def start_intro_phase():
         "user_name": user_name,
         "cv2_audio": f"/static/audio/{cv2_audio_filename}",
         "vision_image": f"/static/{captured_image_filename}",
-        "vision_emotion": cv2_tts_results.get("emotion", "Unknown"),
-        "vision_posture": cv2_tts_results.get("posture", "Unknown"),
+        "vision_emotion": cv2_tts_results.get("vision_emotion", "Unknown"),
+        "vision_posture": cv2_tts_results.get("vision_posture", "Unknown"),
     }
 
     await broadcast(ws_message)
@@ -78,12 +79,7 @@ async def start_intro_phase():
     except Exception as e:
         print(f"⚠️ WebSocket Broadcast Error: {e}")
 
-    try:
-        async with httpx.AsyncClient() as http_client:
-            lore_url = "http://127.0.0.1:8000/start_lore"
-            response = await http_client.post(lore_url)
-            print("➡️ Triggered Lore Phase, response:", response.json())
-    except Exception as e:
-        print(f"⚠️ Failed to trigger lore phase: {e}")
+    await start_lore_phase()
+    await asyncio.sleep(2)  
 
     return {"message": "Phase 2 - Introduction Completed", **ws_message}

@@ -43,7 +43,7 @@ export default function ShowrunnerUI() {
     fetchUserData();
   }, []);
 
-  const connectWebSocket = useCallback(() => {
+  const connectWebSocket = useCallback((): WebSocket => {
     const socket = new WebSocket("ws://localhost:8000/ws");
 
     socket.onopen = () => {
@@ -90,11 +90,17 @@ export default function ShowrunnerUI() {
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
     };
+
+    return socket;
   }, []);
+
+  useEffect(() => {
+    console.log("👁️ Vision Updated:", latestVision);
+  }, [latestVision]);
   
   useEffect(() => {
     const socket = connectWebSocket();
-    return () => socket?.close();
+    return () => socket.close();
   }, [connectWebSocket]);
 
   const sendWebSocketMessage = useCallback((data: WebSocketMessage) => {
@@ -172,9 +178,10 @@ export default function ShowrunnerUI() {
                 className="w-full h-40 object-cover mt-2"
                 onError={(e) => (e.currentTarget.src = "/static/images/fallback-image.png")}
               />
-              <div className="text-sm mt-2">
-                <p><strong>Emotion:</strong> {latestVision.emotion}</p>
-                <p><strong>Posture:</strong> {latestVision.posture}</p>
+              <div className="mb-4 p-4 text-left">
+                <h2 className="text-xl font-bold mb-2">Real-time Vision Feedback</h2>
+                <p className="text-3xl text-blue-400">Emotion: {latestVision.emotion}</p>
+                <p className="text-3xl text-purple-400 mt-2">Posture: {latestVision.posture}</p>
               </div>
             </div>
           </div>

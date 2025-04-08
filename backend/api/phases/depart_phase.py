@@ -1,13 +1,11 @@
-import os
-import asyncio
-import subprocess
+import os, asyncio, subprocess
 from fastapi import APIRouter
 from backend.api.pipelines.tts_only import run_tts_only
 from backend.utils.utils import load_user_data
 from backend.config import STATIC_AUDIO_DIR
 from pythonosc.udp_client import SimpleUDPClient
 
-from pyfiglet import Figlet
+from pyfiglet import Figlet, FigletFont
 from PIL import Image, ImageDraw, ImageFont
 
 router = APIRouter()
@@ -17,11 +15,11 @@ def generate_combined_certificate(user_name, final_title, ascii_img_path, certif
 
     ascii_img = Image.open(ascii_img_path).convert("RGB")
     ascii_width, ascii_height = ascii_img.size
-    portrait_width = 2480  
-    portrait_height = 3508 
+    portrait_width = int(8.5 * 300)
+    portrait_height = int(11 * 300)
     combined = Image.new("RGB", (portrait_width, portrait_height), "white")
     draw = ImageDraw.Draw(combined)
-    ascii_scale = portrait_width * 0.9 / ascii_width
+    ascii_scale = portrait_width * 0.9 #/ ascii_width
     resized_ascii = ascii_img.resize(
         (int(ascii_width * ascii_scale), int(ascii_height * ascii_scale))
     )
@@ -36,8 +34,9 @@ def generate_combined_certificate(user_name, final_title, ascii_img_path, certif
     with open(certificate_text_path, "r") as f:
         lines = f.readlines()
 
-    y_start = resized_ascii.height + 200
-    x_margin = 200
+    #margins
+    y_start = resized_ascii.height + 300
+    x_margin = 300
     y = y_start
 
     for line in lines:

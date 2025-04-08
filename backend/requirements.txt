@@ -1,0 +1,9 @@
+uvicorn
+fastapi
+python-osc
+soundfile
+torch
+httpx
+pyfiglet
+Pillow
+TTS
