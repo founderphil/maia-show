@@ -1,11 +1,10 @@
 import asyncio
 import json
 from fastapi import APIRouter
-from pythonosc.udp_client import SimpleUDPClient
 from backend.api.pipelines.tts_only import run_tts_only
 from backend.api.pipelines.greetings_tts import tts_greeting
 from backend.api.websocket_manager import ws_manager
-from backend.utils.utils import broadcast, save_to_user_data
+from backend.utils.utils import broadcast, save_to_user_data, osc_client
 from backend.config import USER_DATA_FILE, STATIC_AUDIO_DIR
 import soundfile as sf
 
@@ -13,10 +12,6 @@ import os
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
 router = APIRouter()
-
-OSC_IP = "127.0.0.1"
-OSC_PORT = 7400
-client = SimpleUDPClient(OSC_IP, OSC_PORT)
 
 def load_user_data():
     try:
@@ -53,12 +48,12 @@ async def reset_room():
         "projector": 0,
     }
     for light, value in lighting_cues.items():
-        client.send_message(f"/lighting/{light}", value) 
+        osc_client.send_message(f"/lighting/{light}", value) 
     await asyncio.sleep(1)
 ######## play soundtrack
-    client.send_message("/audio/volume/", -5)
+    osc_client.send_message("/audio/volume/", -5)
     await asyncio.sleep(1)
-    client.send_message("/audio/play/music/", "instrumental.wav") 
+    osc_client.send_message("/audio/play/music/", "instrumental.wav") 
     print("Room reset complete")
     return {"message": "Room Reset"}
 
@@ -66,7 +61,7 @@ router.post("/start_tablet")
 async def start_tablet_phase():
     print("🚀 Starting Show!")
 
-    client.send_message("/audio/play/music/", "soundtrack")
+    osc_client.send_message("/audio/play/music/", "soundtrack")
 
     asyncio.create_task(tts_greeting()) ###inference takes 5 seconds
     asyncio.create_task(run_tts_only()) ###inference takes 35 seconds
@@ -127,16 +122,16 @@ async def play_activation_audio_sequence():
             print("🎙️ Generating greeting audio on demand")
             await tts_greeting(filename="maia_greeting.wav")
         
-        print("🔊 Playing vibrations")
-        client.send_message("/audio/play/sfx/", "vibrations.wav")
+        print("🔊 Playing vibrations.wav")
+        osc_client.send_message("/audio/play/sfx/", "vibrations.wav")
         
         await asyncio.sleep(7)
         print("🔊 Playing short.wav")
-        client.send_message("/audio/play/music/", "short.wav")
+        osc_client.send_message("/audio/play/music/", "short.wav")
 
         await asyncio.sleep(10)
         print("🔊 Playing maia_greeting.wav")
-        client.send_message("/audio/play/voice/", "maia_greeting.wav")
+        osc_client.send_message("/audio/play/voice/", "maia_greeting.wav")
         
         asyncio.create_task(run_tts_only(filename="maia_output_welcome.wav"))
         

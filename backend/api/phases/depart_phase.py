@@ -1,15 +1,13 @@
 import os, asyncio, subprocess
 from fastapi import APIRouter
 from backend.api.pipelines.tts_only import run_tts_only
-from backend.utils.utils import load_user_data
+from backend.utils.utils import load_user_data, osc_client
 from backend.config import STATIC_AUDIO_DIR
-from pythonosc.udp_client import SimpleUDPClient
 
 from pyfiglet import Figlet, FigletFont
 from PIL import Image, ImageDraw, ImageFont
 
 router = APIRouter()
-client = SimpleUDPClient("127.0.0.1", 7400)
 
 def generate_combined_certificate(user_name, final_title, ascii_img_path, certificate_text_path, output_path="static/images/printable_certificate.png"):
 
@@ -65,7 +63,7 @@ async def start_departure_phase():
 
     # Speak farewell message
     await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
-    client.send_message("/audio/play/voice/", "maia_departure.wav")
+    osc_client.send_message("/audio/play/voice/", "maia_departure.wav")
     await asyncio.sleep(10)
 
     # Lights cue
@@ -80,7 +78,7 @@ async def start_departure_phase():
         "maiaProjector2": 0,
     }
     for light, value in lighting_off.items():
-        client.send_message(f"/lighting/{light}", value)
+        osc_client.send_message(f"/lighting/{light}", value)
 
     certificate_text = f"""
 {user_name}.

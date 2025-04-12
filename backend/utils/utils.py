@@ -1,13 +1,9 @@
 from pythonosc.udp_client import SimpleUDPClient
-from backend.api.websocket_manager import WebSocketManager
+from backend.api.websocket_manager import ws_manager
 import os
 import json
 import soundfile as sf
 from backend.config import STATIC_AUDIO_DIR
-
-ws_manager = WebSocketManager()
-
-clients = set()
 
 # OSC Client Setup
 OSC_IP = "127.0.0.1"  
@@ -48,12 +44,11 @@ def save_to_user_data(phase, speaker, text, index=None):
 
 # WebSockets
 async def broadcast(message: dict):
-    import json
-    for client in clients:
-        try:
-            await client.send_text(json.dumps(message))
-        except Exception:
-            clients.remove(client)
+    """Send a message to all WebSocket clients using the WebSocketManager."""
+    try:
+        await ws_manager.broadcast(message)
+    except Exception as e:
+        print(f"⚠️ WebSocket Broadcast Error: {e}")
 
 # WAV file duration - Returns duration of a WAV file in seconds as float.
 def get_wav_duration(file_path: str, fallback: float = 5.0) -> float:

@@ -1,15 +1,11 @@
 import os, json, asyncio, httpx
 from fastapi import APIRouter
 from backend.api.pipelines.cv2_tts import run_cv2_tts
-from pythonosc.udp_client import SimpleUDPClient
-from backend.utils.utils import broadcast, save_to_user_data, get_wav_duration
+from backend.utils.utils import broadcast, save_to_user_data, get_wav_duration, osc_client
 from backend.config import BASE_DIR, USER_DATA_FILE
 from backend.api.phases.lore_phase import start_lore_phase
 
 router = APIRouter()
-OSC_IP = "127.0.0.1"
-OSC_PORT = 7400
-client = SimpleUDPClient(OSC_IP, OSC_PORT)
 
 def load_user_data():
     """Load the latest user data from `user_data.json`."""
@@ -25,32 +21,28 @@ async def start_intro_phase():
     user_data = load_user_data()
     user_name = user_data.get("userName", "Querent")
 
-    client.send_message("/phase/intro", 1)
-    # Light cue 12
-    print("Go Cue 12 - Lights, Maia Voice, Play Music on low volume")
+    osc_client.send_message("/phase/intro", 1)
+##### Light and Sound Setup
+    await asyncio.sleep(1)  # Wait for the system to be ready
+    print("Go Cue 2 - Lights, Maia Greeting, Play Music on low volume")
     lighting_cues = {
         "maiaLED": 100,
-        "houseLight1": 10,
-        "houseLight2": 10,
-        "chairSpot": 50,
-        "maiaSpot1": 50,
-        "maiaSpot2": 50,
-        "maiaProjector1": 100,
-        "maiaProjector2": 100,
+        "floor": 1,
+        "desk": 0,
+        "projector": 0,
     }
     for light, value in lighting_cues.items():
-        client.send_message(f"/lighting/{light}", value)
+        osc_client.send_message(f"/lighting/{light}", value)
 
-    client.send_message("/audio/play/music/", "soundtrack")                 ######## PLAY SOUNDTRACK
-    client.send_message("/audio/play/voice/", "maia_output_welcome.wav")    ######## PLAY WELCOME audio
+    osc_client.send_message("/audio/play/voice/", "maia_output_welcome.wav")    ######## PLAY WELCOME audio
     welcome_audio_duration = get_wav_duration("maia_output_welcome.wav")
     await asyncio.sleep(max(welcome_audio_duration, 1))                     ######## LISTEN to WELCOME audio
 
     #16. CV2 active, user changs from standing to sitting posture, comment on their appearance
     print("1️⃣ Generate Emotion & Posture-based Dynamic Mention")
-    cv2_tts_results = await run_cv2_tts()
+    cv2_tts_results = await run_cv2_tts()  ##### inference takes 22 seconds
     save_to_user_data("intro", "maia", cv2_tts_results["llm_response"])
-    client.send_message("/audio/play/voice/", "maia_output_seat.wav")  ######## PLAY SIGHT audio
+    osc_client.send_message("/audio/play/voice/", "maia_output_seat.wav")  ######## PLAY SIGHT audio
     seated_audio_duration = get_wav_duration("maia_output_seat.wav")   
     await asyncio.sleep(max(seated_audio_duration, 1))                 ######## LISTEN to SIGHT audio
     print(f"CV2-TTS Output: {cv2_tts_results}")
@@ -79,7 +71,7 @@ async def start_intro_phase():
     except Exception as e:
         print(f"⚠️ WebSocket Broadcast Error: {e}")
 
-    await start_lore_phase()
+    #await start_lore_phase()
     await asyncio.sleep(2)  
 
     return {"message": "Phase 2 - Introduction Completed", **ws_message}
