@@ -1,14 +1,8 @@
 import os, re, uuid, subprocess, re, asyncio
 from backend.models.stt_tts.stt import record_audio, transcribe_audio
 from backend.models.stt_tts.tts import synthesize_speech
-from backend.utils.utils import broadcast, save_to_user_data, load_user_data, get_wav_duration
+from backend.utils.utils import broadcast, save_to_user_data, load_user_data, get_wav_duration, osc_client
 from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, BASE_DIR, SYSTEM_PROMPT
-from pythonosc.udp_client import SimpleUDPClient
-
-# OSC Client Setup
-OSC_IP = "127.0.0.1"
-OSC_PORT = 7400
-client = SimpleUDPClient(OSC_IP, OSC_PORT)
 
 system_prompt = SYSTEM_PROMPT
 
@@ -66,11 +60,11 @@ async def handle_question(question_key: str, response_key: str, output_filename:
     # Get audio duration
     audio_duration = get_wav_duration(tts_path)
     print(f"🔊 Audio Duration: {audio_duration} seconds")
-    await asyncio.sleep(audio_duration)
 
     # Play audio
     print("🔊 Playing audio...")
-    client.send_message("/audio/play/voice/", output_filename)
+    osc_client.send_message("/audio/play/voice/", output_filename)
+    await asyncio.sleep(audio_duration) # Wait for audio to finish
     
     # Save to user_data
     save_to_user_data("lore", "user", question_text)
