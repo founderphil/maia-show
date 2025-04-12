@@ -1,13 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { db, auth, createUserWithEmail, signInWithEmail, signInAnon } from "@/lib/firebase"; // Import Firebase instances
+import { collection, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { User } from "firebase/auth";
+
 
 export default function PostShowReview() {
   const [userData, setUserData] = useState<Record<string, any> | null>(null);
   const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   useEffect(() => {
+    // Check if user is already logged in
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        console.log("User is signed in:", currentUser.uid);
+      }
+    });
+
     const fetchUserData = async () => {
       try {
         const response = await fetch(`/api/proxy?pathname=/users`, { method: "GET" });
@@ -35,6 +52,9 @@ export default function PostShowReview() {
     };
 
     fetchUserData();
+    
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
   const toggleSelection = (field: string) => {
@@ -42,6 +62,143 @@ export default function PostShowReview() {
       ...prev,
       [field]: !prev[field],
     }));
+  };
+
+  const handleEmailSignup = async () => {
+    if (!email || !password) {
+      setAuthError("Email and password are required");
+      return;
+    }
+    
+    setAuthError(null);
+    const result = await createUserWithEmail(email, password);
+    
+    if (result.error) {
+      setAuthError(result.error);
+    } else {
+      setUser(result.user);
+      setEmail("");
+      setPassword("");
+      alert("Account created successfully!");
+    }
+  };
+
+  const handleEmailSignin = async () => {
+    if (!email || !password) {
+      setAuthError("Email and password are required");
+      return;
+    }
+    
+    setAuthError(null);
+    const result = await signInWithEmail(email, password);
+    
+    if (result.error) {
+      setAuthError(result.error);
+    } else {
+      setUser(result.user);
+      setEmail("");
+      setPassword("");
+      alert("Signed in successfully!");
+    }
+  };
+
+  const handleAnonymousSignin = async () => {
+    try {
+      setAuthError(null);
+      const result = await signInAnon();
+      
+      if (result.error) {
+        // If anonymous auth fails, show a more user-friendly error
+        if (result.error.includes("admin-restricted-operation")) {
+          setAuthError("Anonymous login is not enabled. Please use email authentication.");
+        } else {
+          setAuthError(result.error);
+        }
+      } else {
+        setUser(result.user);
+        alert("Signed in anonymously!");
+      }
+    } catch (error: any) {
+      setAuthError(error.message || "Failed to sign in anonymously");
+    }
+  };
+
+  const saveUserDataToFirebase = async (dataToSave: Record<string, any>, saveType: 'full' | 'selected') => {
+    try {
+      // Check if user is logged in
+      if (!auth.currentUser) {
+        // Try anonymous sign in first
+        try {
+          console.log("Attempting anonymous sign in...");
+          const result = await signInAnon();
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          if (!result.user) {
+            throw new Error("Failed to create anonymous user");
+          }
+          setUser(result.user);
+          console.log("Anonymous sign in successful:", result.user.uid);
+        } catch (anonError: any) {
+          console.error("Anonymous sign in failed:", anonError);
+          // If anonymous auth fails, prompt for email sign in
+          const shouldSignIn = confirm("You need to be signed in to save data. Would you like to sign in with email?");
+          if (!shouldSignIn) return;
+          
+          // Focus on email field and show a message
+          setAuthError("Please enter your email and password to save your data");
+          return;
+        }
+      }
+
+      if (!auth.currentUser) {
+        throw new Error("Failed to authenticate user");
+      }
+
+      const userId = auth.currentUser.uid;
+      console.log("Saving data for user:", userId);
+      
+      try {
+        // Define the Firestore collection and document path
+        const usersCollection = collection(db, "users");
+        const userDocRef = doc(usersCollection, userId);
+
+        // Add timestamp to the data
+        const dataWithTimestamp = {
+          ...dataToSave,
+          timestamp: new Date().toISOString(),
+          user_id: userId, // Add user ID to the data for easier querying
+        };
+
+        // Save the data to Firestore
+        console.log("Saving data to Firestore:", dataWithTimestamp);
+        await setDoc(userDocRef, dataWithTimestamp, { merge: true });
+
+        alert(`Data (${saveType}) saved successfully to your profile!`);
+      } catch (firestoreError: any) {
+        console.error("Firestore error:", firestoreError);
+        
+        // Handle specific Firestore errors
+        if (firestoreError.code === 'permission-denied') {
+          alert(`Permission denied: Your Firebase security rules are preventing write access. Please check your Firestore rules in the Firebase console.`);
+        } else if (firestoreError.message && firestoreError.message.includes('insufficient permissions')) {
+          alert(`Insufficient permissions: Your Firebase security rules are preventing write access. Please check your Firestore rules in the Firebase console.`);
+        } else {
+          alert(`Failed to save ${saveType} profile: ${firestoreError.message}`);
+        }
+        
+        // Log detailed error for debugging
+        console.error("Detailed error:", {
+          code: firestoreError.code,
+          message: firestoreError.message,
+          details: firestoreError.details,
+          stack: firestoreError.stack
+        });
+      }
+    } catch (error: any) {
+      console.error(`Failed to save ${saveType} profile:`, error);
+      alert(`Failed to save ${saveType} profile: ${error.message}`);
+    }
   };
 
   const handleSaveSelected = async () => {
@@ -57,32 +214,14 @@ export default function PostShowReview() {
       return;
     }
 
-    try {
-      const res = await fetch("/api/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pathname: "/postshow/saveSelected", body: selectedData }),
-      });
-
-      const data = await res.json();
-      alert(`Selected data saved:\n${JSON.stringify(data)}`);
-    } catch (error) {
-      console.error("Failed to save selected data:", error);
-    }
+    await saveUserDataToFirebase(selectedData, 'selected');
   };
 
   const handleSaveAll = async () => {
-    try {
-      const res = await fetch("/api/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pathname: "/postshow/saveAll" }),
-      });
-
-      const data = await res.json();
-      alert(`Full profile saved:\n${JSON.stringify(data)}`);
-    } catch (error) {
-      console.error("Failed to save full profile:", error);
+    if (userData) {
+      await saveUserDataToFirebase(userData, 'full');
+    } else {
+      alert("No user data to save.");
     }
   };
 
@@ -90,6 +229,7 @@ export default function PostShowReview() {
     if (!confirm("Are you sure you want to delete all local data? This cannot be undone.")) return;
 
     try {
+      // Delete from local backend
       const res = await fetch("/api/proxy", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -97,9 +237,17 @@ export default function PostShowReview() {
       });
 
       const data = await res.json();
-      alert("Local data deleted.");
-
-      // kill the state
+      
+      // Delete from Firebase if user is logged in
+      if (auth.currentUser) {
+        const userId = auth.currentUser.uid;
+        const userDocRef = doc(collection(db, "users"), userId);
+        await deleteDoc(userDocRef);
+        alert("All data deleted (local and Firebase).");
+      } else {
+        alert("Local data deleted.");
+      }
+      
       setUserData(null);
       setSelectedFields({});
     } catch (error) {
@@ -107,17 +255,119 @@ export default function PostShowReview() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+      setUser(null);
+      alert("Signed out successfully");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6">
       <h1 className="text-3xl font-bold mb-2">Review Your Session Data</h1>
-      <p className="mb-4 text-gray-400">Select what you want to save and send off to FAIRYLAND.</p>
+      <p className="mb-4 text-gray-400">Select what you want to save to your profile.</p>
 
+      {/* Authentication Section */}
+      <div className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-md mb-6">
+        {user ? (
+          <div className="text-center">
+            <p className="mb-2">Logged in as: {user.email || "Anonymous User"}</p>
+            <p className="text-xs text-gray-400 mb-4">User ID: {user.uid}</p>
+            <button 
+              onClick={handleSignOut} 
+              className="border-2 border-blue-500 px-4 py-2 rounded hover:bg-blue-500"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="flex justify-center space-x-4 mb-4">
+              <button 
+                onClick={() => setAuthMode('signin')} 
+                className={`px-4 py-2 rounded ${authMode === 'signin' ? 'bg-blue-500' : 'border border-blue-500'}`}
+              >
+                Sign In
+              </button>
+              <button 
+                onClick={() => setAuthMode('signup')} 
+                className={`px-4 py-2 rounded ${authMode === 'signup' ? 'bg-blue-500' : 'border border-blue-500'}`}
+              >
+                Sign Up
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-2 mb-2 bg-gray-800 rounded"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2 mb-2 bg-gray-800 rounded"
+              />
+              
+              {authError && <p className="text-red-500 text-sm mb-2">{authError}</p>}
+              
+              <div className="flex flex-col space-y-2">
+                <button 
+                  onClick={authMode === 'signin' ? handleEmailSignin : handleEmailSignup} 
+                  className="w-full border-2 border-blue-500 px-4 py-2 rounded hover:bg-blue-500"
+                >
+                  {authMode === 'signin' ? 'Sign In with Email' : 'Sign Up with Email'}
+                </button>
+                <p className="text-center text-gray-400 text-xs my-1">- or -</p>
+                <button 
+                  onClick={handleAnonymousSignin} 
+                  className="w-full border-2 border-gray-500 px-4 py-2 rounded hover:bg-gray-500"
+                >
+                  Continue Anonymously
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons - Moved above the data list */}
+      <div className="flex flex-wrap justify-center gap-4 mb-6">
+        <button 
+          onClick={handleSaveAll} 
+          className="border-2 border-pink-500 px-4 py-2 rounded hover:bg-pink-500 transition-colors"
+        >
+          Save Full Profile
+        </button>
+        <button 
+          onClick={handleSaveSelected} 
+          className="border-2 border-pink-500 px-4 py-2 rounded hover:bg-pink-500 transition-colors"
+        >
+          Save Selected Data
+        </button>
+        <button 
+          onClick={handleDeleteAll} 
+          className="border-2 border-red-500 px-4 py-2 rounded hover:bg-red-500 transition-colors"
+        >
+          Delete All Data
+        </button>
+      </div>
+
+      {/* User Data Section */}
       {loading ? (
         <p>Loading...</p>
       ) : !userData ? (
         <p>No user data found.</p>
       ) : (
         <div className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-md">
+          <h2 className="text-xl font-semibold mb-4 text-center">Your Session Data</h2>
           {Object.entries(userData).map(([key, value]) => (
             <div key={key} className="flex items-center justify-between border-b border-gray-700 py-2">
               <label className="flex items-center">
@@ -134,19 +384,6 @@ export default function PostShowReview() {
           ))}
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex space-x-4 mt-6">
-        <button onClick={handleSaveAll} className="border-2 border-pink-500 px-4 py-2 rounded hover:bg-pink-500">
-          Save Full Profile
-        </button>
-        <button onClick={handleSaveSelected} className="border-2 border-pink-500 px-4 py-2 rounded hover:bg-pink-500">
-          Save Selected Data
-        </button>
-        <button onClick={handleDeleteAll} className="border-2 border-red-500 px-4 py-2 rounded hover:bg-red-500">
-          Delete All Data
-        </button>
-      </div>
     </div>
   );
 }
