@@ -68,16 +68,15 @@ export default function TabletUI() {
         play
       </button>
 
-      <h1 className="text-2xl font-bold mb-4">What shall I call you?</h1>
       <input
         type="text"
         value={userName}
         onChange={(e) => setUserName(e.target.value)}
-        placeholder="Who is this..."
-        className="p-2 rounded mb-4 w-64 text-white border-b border-white border-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        placeholder="What shall I call you?"
+        className="p-4 text-xl text-white border-b-2 border-white focus:outline-none bg-transparent w-1/2 text-center"
       />
-      <button onClick={handleCapture} className="mt-4 px-4 py-2 bg-purple-500 rounded">
-        Capture
+      <button onClick={handleCapture} className="mt-8 px-6 py-3 bg-purple-500 rounded-md text-lg">
+        Continue
       </button>
     </div>
   );
