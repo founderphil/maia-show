@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter
 from pythonosc.udp_client import SimpleUDPClient
 from backend.api.pipelines.tts_only import run_tts_only
+from backend.api.pipelines.greetings_tts import tts_greeting
 from backend.api.websocket_manager import ws_manager
 from backend.utils.utils import broadcast, save_to_user_data
 from backend.config import USER_DATA_FILE, STATIC_AUDIO_DIR
@@ -39,85 +40,106 @@ def get_wav_duration(file_path):
         return 5  
 
 ## THIS IS RESET POSITION
-router.post("/start_tablet") #TODO: move the intro TTS inference to this endpoint
-async def start_tablet_phase():
-    print("🚀 Starting Show!")
+@router.post("/reset_room") 
+async def reset_room():
+    print("ROOM RESET")
 ######## set the lights
     await asyncio.sleep(1)
     print("Go Cue 1 - Lights, Reset Tablet, Play Music")
     lighting_cues = {
         "maiaLED": 0, # 0-255
-        "houseLight1": 1, #0 or 1, on off
-        "houseLight2": 1,
-        "floorLight1": 1,
-        "floorLight2": 1,
-        "deskLight": 1,
-        "chairSpot": 0,
-        "maiaProjector1": 0,
+        "floor": 1,
+        "desk": 1,
+        "projector": 0,
     }
     for light, value in lighting_cues.items():
-        client.send_message(f"/lighting/{light}", value) ######## play soundtrack
+        client.send_message(f"/lighting/{light}", value) 
     await asyncio.sleep(1)
+######## play soundtrack
+    client.send_message("/audio/volume/", -5)
+    await asyncio.sleep(1)
+    client.send_message("/audio/play/music/", "instrumental.wav") 
+    print("Room reset complete")
+    return {"message": "Room Reset"}
+
+router.post("/start_tablet")
+async def start_tablet_phase():
+    print("🚀 Starting Show!")
 
     client.send_message("/audio/play/music/", "soundtrack")
 
-    asyncio.create_task(run_tts_only())  # fire and forget TTS
+    asyncio.create_task(tts_greeting()) ###inference takes 5 seconds
+    asyncio.create_task(run_tts_only()) ###inference takes 35 seconds
     return {"message": "Tablet Phase Started"}
+  
 
 @router.post("/run_tablet_tts")
 async def run_tablet_tts():
     print("🔊 Running TTS Welcome from Tablet Phase")
 
-    tts_results = await run_tts_only(filename="maia_output_welcome.wav") 
+    tts_results = await tts_greeting(filename="maia_greeting.wav")
+    print("✅ Tablet Phase TTS result:", tts_results)
+    tts_results = await run_tts_only(filename="maia_output_welcome.wav")
     print("✅ Tablet Phase TTS result:", tts_results)
 
-    save_to_user_data("intro", "maia", tts_results["llm_response"])
-    welcome_audio_path = tts_results.get("audio_url")
-    
-    if welcome_audio_path:
-        audio_duration = get_wav_duration(welcome_audio_path)
-        print(f"📏 Detected WAV duration: {audio_duration} seconds")
-    else:
-        print("⚠️ No audio file found for measuring duration!")
-        audio_duration = 5  
-
-    await asyncio.sleep(max(audio_duration, 1)) ######## wait for welcome to finish
-
-    ws_message = {
-        "type": "tts_audio_only",
-        "user_name": tts_results.get("user_name", "Unknown"),
-        "chosen_signet": tts_results.get("chosen_signet", "?"),
-        "audio_url": tts_results.get("audio_url", ""),
-        "llm_response": tts_results.get("text", ""),
-    }
-
-    try:
-        await broadcast(ws_message)
-        print("📡 Sent Tablet TTS WebSocket:", ws_message)
-    except Exception as e:
-        print(f"⚠️ WebSocket error in /run_tablet_tts: {e}")
-
-    return {"message": "Tablet TTS Complete", **ws_message}
+    save_to_user_data("intro", "maia", tts_results["llm_response"])    
+    return {"message": "Tablet TTS Complete", **tts_results}
 
 
-@router.post("/activate") ######## pressing the button on the tablet moves to next phase
+@router.post("/activate")
 async def activate():
-    """✨ Final step when user presses 'Activate' in Tablet UI."""
-    print("✨ User pressed Activate! Advancing to Phase 2 - Introduction.")
-    client.send_message("/phase/start", "intro")
-
+    print("✨ User pressed Activate!")
+    
+    # Send activation success message immediately
     ws_message = {
-    "type": "phase_tablet",
-    "phase": "tablet",
-    "message": "Phase 1 - Tablet Started"
+        "type": "activation_success",
+        "phase": "tablet",
+        "message": "Activation successful"
     }
-    await broadcast(ws_message)
-
-    if ws_message is None:
-        print("🚨 ERROR: WebSocket message is None!")
-    else:
-        print("📡 Sending WebSocket Message:", ws_message)
+    
+    # Broadcast the message immediately
     try:
+        print("📡 Sending WebSocket Message:", ws_message)
         await ws_manager.broadcast(ws_message)
+        
+        # Also broadcast the phase change message
+        phase_message = {
+            "type": "phase_tablet",
+            "phase": "tablet",
+            "message": "Phase 1 - Tablet Started"
+        }
+        await ws_manager.broadcast(phase_message)
     except Exception as e:
         print(f"⚠️ WebSocket Broadcast Error: {e}")
+    
+    # Start audio sequence in background
+    asyncio.create_task(play_activation_audio_sequence())
+    
+    # Return immediately
+    return {"success": True, "message": "Activation successful"}
+
+async def play_activation_audio_sequence():
+    """Play the activation audio sequence in the background."""
+    try:
+        # Check if greeting audio exists, generate if needed
+        greeting_path = os.path.join(STATIC_AUDIO_DIR, "maia_greeting.wav")
+        if not os.path.exists(greeting_path):
+            print("🎙️ Generating greeting audio on demand")
+            await tts_greeting(filename="maia_greeting.wav")
+        
+        print("🔊 Playing vibrations")
+        client.send_message("/audio/play/sfx/", "vibrations.wav")
+        
+        await asyncio.sleep(7)
+        print("🔊 Playing short.wav")
+        client.send_message("/audio/play/music/", "short.wav")
+
+        await asyncio.sleep(10)
+        print("🔊 Playing maia_greeting.wav")
+        client.send_message("/audio/play/voice/", "maia_greeting.wav")
+        
+        asyncio.create_task(run_tts_only(filename="maia_output_welcome.wav"))
+        
+        print("✅ Activation audio sequence completed")
+    except Exception as e:
+        print(f"⚠️ Error in activation audio sequence: {e}")

@@ -56,14 +56,21 @@ export default function ShowrunnerUI() {
       console.log("📡 WebSocket Data:", data);
 
       switch (data.type) {
+        case "reset_room":
         case "phase_intro":
         case "phase_tablet":
           setActivePhase(data.phase || "tablet");
           if (data.user_data) setUserData(data.user_data);
           break;
-
-        case "tts_audio_only":
         case "vision_update":
+            if (data.vision_image) setVisionImage(data.vision_image);
+            if (data.vision_emotion || data.vision_posture) {
+              setLatestVision({
+                emotion: data.vision_emotion || "Unknown",
+                posture: data.vision_posture || "Unknown",
+              });
+            }
+         break;
         case "full_inference":
           if (data.audio_url) setAudioUrl(data.audio_url);
           if (data.llm_response) setLlmResponse(data.llm_response);

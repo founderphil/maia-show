@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from backend.api.phases.tablet_phase import reset_room
 from backend.api.phases.tablet_phase import start_tablet_phase
 from backend.api.phases.intro_phase import start_intro_phase
 from backend.api.phases.lore_phase import start_lore_phase, audio_done_event
@@ -60,6 +61,7 @@ async def save_user(user_data: dict):
 
 
 PHASE_FUNCTIONS = {
+    "reset": reset_room,
     "tablet": start_tablet_phase,
     "intro": start_intro_phase,
     "lore": start_lore_phase,

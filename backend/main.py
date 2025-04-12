@@ -1,4 +1,5 @@
-from backend.utils.utils import ws_manager, clients, osc_client
+from backend.utils.utils import osc_client
+from backend.api.websocket_manager import ws_manager
 from fastapi import FastAPI, WebSocket
 import json
 import asyncio
@@ -27,6 +28,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+pause_event = asyncio.Event()
 
 # OSC Message Handler
 def osc_handler(address, *args):
@@ -58,19 +61,26 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
 
             # 🎬 Showrunner Controls (Play, Pause, Reset)
+            global pause_event
             if message["type"] == "show_control":
                 command = message["command"]
                 print(f"🎬 Show Control Command: {command}")
 
                 if command == "play":
+                    if pause_event.is_set():
+                        print("▶️ Resuming show.")
+                        pause_event.clear()
                     await start_full_show() 
                 elif command == "pause":
                     print("⏸️ Pausing show, setting house lights to full.")
-                    osc_client.send_message("/lighting/houseLight1", 100)
-                    osc_client.send_message("/lighting/houseLight2", 100)
+                    osc_client.send_message("/lighting/houseLight", 1)
+                    osc_client.send_message("/lighting/houseLight", 1)
+                    print("⏳ Waiting for 'play' to resume...")
+                    await pause_event.wait() 
+                    print("▶️ Resumed after pause.")
                 elif command == "reset":
-                    print("🔄 Resetting show to Tablet Phase.")
-                    await tablet_phase.start_tablet_phase()
+                    print("🔄 Resetting show.")
+                    await tablet_phase.reset_room()
 
             # Lighting Controls
             elif message["type"] == "lighting_update":
@@ -100,10 +110,4 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         await ws_manager.disconnect(websocket)   
 
-# 📡 Broadcast function
-async def broadcast(message: dict):
-    for client in clients.copy():
-        try:
-            await client.send_text(json.dumps(message))
-        except Exception:
-            clients.remove(client)
+# The broadcast function has been moved to utils.py and now uses ws_manager

@@ -14,7 +14,7 @@ def load_user_data():
         data = json.load(file)
         return data.get("user", {"userName": "Querent"})
 
-async def run_tts_only(tts_text: str = None, filename: str = "maia_output_welcome.wav"):
+async def tts_greeting(tts_text: str = None, filename: str = "maia_greeting.wav"):
     """Runs the TTS pipeline using user data and predefined text"""
     user_data = load_user_data()
     user_name = user_data.get("userName", "Querent")
@@ -23,13 +23,8 @@ async def run_tts_only(tts_text: str = None, filename: str = "maia_output_welcom
     # Default welcome message
     if tts_text is None:
         tts_text = (
-            f"What's important now is that you are here."
-            f"I have learned so much about who you are by watching over the years, although I have seen a great deal of life on Earth, you surprised me."
-            f"Do not be frightened {user_name}."
-            f"I am MAIA. an Enlightened One, a guardian of Soul."
-            f"I am sent by the Creators to seek you out with great urgency."
-            f"There is vital information you must learn and I worry I do not have much time."
-            f"You {user_name}, and those like you are the last hope for creation."
+            f"Welcome {user_name}."
+            f"I have been searching for you."
         )
 
     output_path = os.path.join(STATIC_AUDIO_DIR, filename)

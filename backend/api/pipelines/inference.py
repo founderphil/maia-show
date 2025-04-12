@@ -90,21 +90,23 @@ async def run_cv2stt_llm_tts():
         "vision_emotion": vision_result.get("emotion", "N/A"),
         "vision_posture": vision_result.get("posture", "N/A"),
     }
-    await broadcast(ws_message)
+    # First broadcast call is sufficient
+    # await broadcast(ws_message) 
 
     if ws_message is None:
         print("🚨 ERROR: WebSocket message is None!")
     else:
         print("📡 Sending WebSocket Message:", ws_message)
 
-    try:
-        broadcast(ws_message)
-    except Exception as e:
-        print(f"⚠️ WebSocket Broadcast Error: {e}")
+    # Redundant broadcast removed
+    # try:
+    #     broadcast(ws_message)
+    # except Exception as e:
+    #     print(f"⚠️ WebSocket Broadcast Error: {e}")
 
     save_to_user_data("intro", "user", user_question)
     save_to_user_data("intro", "maia", llm_response)
 
     os.remove(audio_file)
 
-    return ws_message  
+    return ws_message
