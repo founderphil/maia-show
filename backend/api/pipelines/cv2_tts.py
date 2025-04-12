@@ -78,16 +78,10 @@ async def run_cv2_tts():
     "audio_url": f"/static/audio/{OUTPUT_FILENAME}",
     "llm_response": tts_text,
     }
-    await broadcast(ws_message)
 
     if ws_message is None:
         print("🚨 ERROR: WebSocket message is None!")
     else:
         print("📡 Sending WebSocket Message:", ws_message)
-
-    try:
-        await broadcast(ws_message)
-    except Exception as e:
-        print(f"⚠️ WebSocket Broadcast Error: {e}")
 
     return ws_message
