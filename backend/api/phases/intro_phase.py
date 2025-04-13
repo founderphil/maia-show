@@ -34,9 +34,8 @@ async def start_intro_phase():
     for light, value in lighting_cues.items():
         osc_client.send_message(f"/lighting/{light}", value)
 
-    osc_client.send_message("/audio/play/voice/", "maia_output_welcome.wav")    ######## PLAY WELCOME audio
     welcome_audio_duration = get_wav_duration("maia_output_welcome.wav")
-    await asyncio.sleep(max(welcome_audio_duration, 1))                     ######## LISTEN to WELCOME audio
+    await asyncio.sleep(welcome_audio_duration - 25)                    ######## HOLD for WELCOME audio (about 35 seconds)
 
     #16. CV2 active, user changs from standing to sitting posture, comment on their appearance
     print("1️⃣ Generate Emotion & Posture-based Dynamic Mention")

@@ -148,7 +148,7 @@ async def activate():
     
     # Start playing audio IMMEDIATELY
     print("🔊 Playing vibrations.wav immediately")
-    osc_client.send_message("/audio/volume/", -20)
+    osc_client.send_message("/audio/volume/", -20) #turn down MUSIC track
     osc_client.send_message("/audio/play/sfx/", "vibrations.wav")
     
     ws_message = {
@@ -185,20 +185,18 @@ def generate_missing_audio_files():
     print("🎙️ Starting TTS generation for both greeting and welcome")
     process = multiprocessing.Process(
         target=run_tts_in_process,
-        args=(True, True)  # Always generate both
+        args=(True, True)
     )
     process.daemon = True
     process.start()
 
 async def continue_activation_audio_sequence():
     try:
-        # Check if audio files exist, if not, verify TTS generation is in progress
         greeting_path = os.path.join(STATIC_AUDIO_DIR, "maia_greeting.wav")
         welcome_path = os.path.join(STATIC_AUDIO_DIR, "maia_output_welcome.wav")
         
         if not os.path.exists(greeting_path) or not os.path.exists(welcome_path):
             if not _tts_started:
-                # Only start TTS generation if it hasn't been started yet (which should be rare)
                 print("⚠️ TTS not started yet, starting it now during activation")
                 generate_missing_audio_files()
             else:
@@ -211,7 +209,6 @@ async def continue_activation_audio_sequence():
         
         await asyncio.sleep(3)
         
-        # Wait for greeting audio to be generated
         greeting_path = os.path.join(STATIC_AUDIO_DIR, "maia_greeting.wav")
         timeout = 0
         max_wait = 40
@@ -265,7 +262,7 @@ async def queue_welcome_audio():
             while not os.path.exists(welcome_path):
                 await asyncio.sleep(1)
                 timeout += 1
-                if timeout % 5 == 0:  # Log every 5 seconds
+                if timeout % 5 == 0: 
                     print(f"⏳ Still waiting for welcome audio file to be created... ({timeout}s)")
         
         print("📊 Waiting for welcome audio file to be fully written...")
