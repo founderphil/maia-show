@@ -16,14 +16,16 @@ def clean_llama_response(output_text: str) -> str:
     else:
         answer_text = output_text.strip()
     
-    # Remove any metadata lines
-    answer_text = re.sub(r"Prompt:.*|Generation:.*|Peak memory:.*", "", answer_text)
+    # Remove metadata lines
+    answer_text = re.sub(r"Prompt:.*|Generation:.*|Peak memory:.*", "", answer_text, flags=re.DOTALL)
     
-    # Split into sentences and take only the first two
+    # Check if we have any content after cleaning
+    if not answer_text.strip():
+        return "I sense your energy and connection to the universe. Your journey with SOL is just beginning."
+    
+    # Limit to first two sentences for brevity
     sentences = re.split(r'(?<=[.!?])\s+', answer_text)
     limited_output = ' '.join(sentences[:2])
-    
-    # Remove any "User:" or "MAIA:" prefixes
     limited_output = re.sub(r"^(User:|MAIA:)\s*", "", limited_output)
     
     return limited_output.strip()
@@ -37,10 +39,11 @@ def run_llm(prompt: str, max_tokens: int = 128) -> str:
     "--adapter-path", adapter_path,
     "--prompt", prompt,
     "--max-tokens", str(max_tokens),
-    "--temperature", str(0.0),  # Convert float to string
-    "--top-p", str(1.0)         # Convert float to string
+    "--temp", "0.0",  # Use --temp instead of --temperature
+    "--top-p", "1.0"
     ], capture_output=True, text=True)
     print("🔍 LLM stdout:", result.stdout)
+    print("🔍 LLM stderr:", result.stderr)  # Add stderr logging
     return clean_llama_response(result.stdout.strip())
 
 def get_duration_seconds(file_path: str) -> float:
@@ -133,7 +136,7 @@ Examples of Assignment: Mars, Andromeda, Pacific Ocean, Mount Everest, Neptune, 
 """
     print("🔍 Summary Prompt for LLM:\n", summary_prompt)
     # Use a smaller max_tokens to force a shorter response
-    raw_result = run_llm(summary_prompt, max_tokens=8)
+    raw_result = run_llm(summary_prompt, max_tokens=24)
     print("🔍 Raw LLM Output for Assignment:\n", raw_result)
 
     # Clean and extract just the place name
@@ -190,7 +193,7 @@ async def run_assignment_phase():
     user_name = user_data.get("user", {}).get("userName", "Querent")
 
     # 1. Maia introduces the assignment phase
-    introduction_text = f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest {user_name}."
+    introduction_text = f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest, {user_name}."
     intro_audio = "maia_assignment_intro.wav"
     synthesize_speech(text=introduction_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, intro_audio))
     await play_audio_and_wait(intro_audio)
@@ -257,7 +260,7 @@ async def run_assignment_phase():
     # 7. Maia responds to the second user response
     prompt2 = f"{system_prompt}\nUser: {user_response2}\n\nMAIA:"
     llm_output2 = run_llm(prompt2)
-    clean_output2 = clean_llama_response(llm_output2)
+    clean_output2 = clean_llama_response(llm_output2) + " And now a final question."
     save_to_user_data("assignment", "maia_output_R2", clean_output2, index="R2")
     response2_audio = "maia_assignment_R2.wav"
     synthesize_speech(clean_output2, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, response2_audio))
