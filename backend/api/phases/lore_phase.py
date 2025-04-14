@@ -68,6 +68,6 @@ async def start_lore_phase():
     print("✨ Entering Lore Q&A Phase")
     await run_question_sequence()
 
-    await start_assignment_phase()
+    await start_assignment_phase() # Start the assignment phase after Q&A is complete
     await asyncio.sleep(2)  
     return {"message": "Phase 3 - Lore Phase with Q&A Completed"}

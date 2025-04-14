@@ -239,7 +239,7 @@ async def run_assignment_phase():
     question1_text = "You are standing in a place where the universe breathes around you. Describe to me your favorite place in the universe."
     save_to_user_data("assignment", "maia_output_Q1", question1_text, index="Q1")
     question1_audio = "maia_assignment_Q1.wav"
-    synthesize_speech(text=question1_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, question1_audio))
+    #synthesize_speech(text=question1_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, question1_audio))
     await play_audio_and_wait(question1_audio)
 
     # 3. User responds to the first question
@@ -276,7 +276,7 @@ async def run_assignment_phase():
     question2_text = "You come across something ancient. What is it and what do you do?"
     save_to_user_data("assignment", "maia_output_Q2", question2_text, index="Q2")
     question2_audio = "maia_assignment_Q2.wav"
-    synthesize_speech(question2_text, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, question2_audio))
+    #synthesize_speech(question2_text, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, question2_audio))
     await play_audio_and_wait(question2_audio)
 
     # 6. User responds to the second question
@@ -310,7 +310,7 @@ async def run_assignment_phase():
     await play_audio_and_wait(response2_audio)
 
     # 8. Maia asks the third question
-    question3_text = ("And finally, tell me, when the universe listens to the quiet murmur of your soul. "
+    question3_text = ("Tell me, when the universe listens to the quiet murmur of your soul. "
                       "What hidden spark within you does it reveal? What do you believe is your gift or talent?")
     save_to_user_data("assignment", "maia_output_Q3", question3_text, index="Q3")
     question3_audio = "maia_assignment_Q3.wav"

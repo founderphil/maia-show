@@ -204,7 +204,18 @@ async def start_departure_phase():
 ##### speak farewell
     await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
     osc_client.send_message("/audio/play/voice/", "maia_departure.wav")
+    osc_client.send_message("/audio/play/music/", "full.mp3")
+
     await asyncio.sleep(10)
+    osc_client.send_message("/audio/volume/", -12)
+    await asyncio.sleep(2)
+    osc_client.send_message("/audio/volume/", -24)
+    await asyncio.sleep(2)
+    osc_client.send_message("/audio/volume/", -36)
+    await asyncio.sleep(2)
+    osc_client.send_message("/audio/volume/", -48)
+    await asyncio.sleep(2)
+
 
     # Lights cue
     lighting_cues = {
@@ -289,5 +300,7 @@ async def start_departure_phase():
 
     #print that shit
     print_certificate_text(certificate_text, user_name=user_name)
-
+    
+    #the show is now complete
+    print("🌌 SHOW IS COMPLETE - CLICK RESTART")    
     return {"message": "Phase 5 - Departure completed."}

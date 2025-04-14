@@ -6,6 +6,7 @@ from backend.api.websocket_manager import ws_manager
 from backend.utils.utils import broadcast, save_to_user_data, osc_client
 from backend.config import USER_DATA_FILE, STATIC_AUDIO_DIR
 import soundfile as sf
+from backend.api.phases.intro_phase import start_intro_phase
 
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
@@ -290,5 +291,8 @@ async def queue_welcome_audio():
         print("🔊 Playing maia_output_welcome.wav")
         osc_client.send_message("/audio/play/voice/", "maia_output_welcome.wav")
         print("✅ Welcome audio played successfully")
+        
+        # Start the intro phase after welcome audio is played
+        asyncio.create_task(start_intro_phase())
     except Exception as e:
         print(f"⚠️ Error queuing welcome audio: {e}")

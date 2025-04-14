@@ -70,7 +70,7 @@ async def start_intro_phase():
     except Exception as e:
         print(f"⚠️ WebSocket Broadcast Error: {e}")
 
-    #await start_lore_phase()
+    await start_lore_phase()
     await asyncio.sleep(2)  
 
     return {"message": "Phase 2 - Introduction Completed", **ws_message}
