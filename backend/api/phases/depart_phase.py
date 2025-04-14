@@ -4,46 +4,179 @@ from backend.api.pipelines.tts_only import run_tts_only
 from backend.utils.utils import load_user_data, osc_client
 from backend.config import STATIC_AUDIO_DIR
 
-from pyfiglet import Figlet, FigletFont
 from PIL import Image, ImageDraw, ImageFont
+import textwrap
 
 router = APIRouter()
 
-def generate_combined_certificate(user_name, final_title, ascii_img_path, certificate_text_path, output_path="static/images/printable_certificate.png"):
+def print_certificate_text(certificate_text, user_name=None, output_path="static/images/printable_certificate.png"):
 
-    ascii_img = Image.open(ascii_img_path).convert("RGB")
-    ascii_width, ascii_height = ascii_img.size
+    if user_name is None:
+
+        first_line = certificate_text.split('\n')[0].strip()
+        if "..." in first_line:
+            user_name = first_line.split('...')[0].strip()
+        else:
+            user_name = "User"
+    #page size        
     portrait_width = int(8.5 * 300)
     portrait_height = int(11 * 300)
     combined = Image.new("RGB", (portrait_width, portrait_height), "white")
     draw = ImageDraw.Draw(combined)
-    ascii_scale = portrait_width * 0.9 #/ ascii_width
-    resized_ascii = ascii_img.resize(
-        (int(ascii_width * ascii_scale), int(ascii_height * ascii_scale))
-    )
-    ascii_x = (portrait_width - resized_ascii.width) // 2
-    combined.paste(resized_ascii, (ascii_x, 100))
+    
 
-    # Load font
+    margin_left = int(0.75 * 300) 
+    margin_right = int(0.75 * 300)
+    usable_width = portrait_width - margin_left - margin_right
+    
     try:
-        font = ImageFont.truetype("Courier_New.ttf", 48)
-    except:
-        font = ImageFont.load_default()
-    with open(certificate_text_path, "r") as f:
-        lines = f.readlines()
-
-    #margins
-    y_start = resized_ascii.height + 300
-    x_margin = 300
-    y = y_start
-
+        monospace_fonts = [
+            "/System/Library/Fonts/Courier.dfont",
+            "/System/Library/Fonts/Monaco.dfont",
+            "/System/Library/Fonts/Menlo.ttc",
+            "/System/Library/Fonts/Courier New.ttf",
+            "/System/Library/Fonts/Andale Mono.ttf"
+        ]
+        regular_fonts = [
+            "/System/Library/Fonts/Supplemental/Zapfino.ttf",  
+            "/System/Library/Fonts/Supplemental/Didot.ttc",
+            "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
+            "/Library/Fonts/Arial.ttf",
+            "/System/Library/Fonts/Helvetica.ttc"
+        ]
+        
+        ascii_font_loaded = False
+        for font_path in monospace_fonts:
+            if os.path.exists(font_path):
+                try:
+                    ascii_font = ImageFont.truetype(font_path, 30)
+                    ascii_font_loaded = True
+                    print(f"ASCII font loaded successfully from {font_path}")
+                    break
+                except Exception as e:
+                    print(f"Error loading ASCII font {font_path}: {e}")
+                    continue
+        
+        # Load regular fonts for text
+        regular_font_loaded = False
+        for font_path in regular_fonts:
+            if os.path.exists(font_path):
+                try:
+                    title_font = ImageFont.truetype(font_path, 58)
+                    subtitle_font = ImageFont.truetype(font_path, 50)
+                    body_font = ImageFont.truetype(font_path, 42)
+                    regular_font_loaded = True
+                    print(f"Regular fonts loaded successfully from {font_path}")
+                    break
+                except Exception as e:
+                    print(f"Error loading regular font {font_path}: {e}")
+                    continue
+        
+        # Fall back to default fonts
+        if not ascii_font_loaded:
+            print("Using default font for ASCII art")
+            ascii_font = ImageFont.load_default()
+            
+        if not regular_font_loaded:
+            print("Using default fonts for regular text")
+            title_font = ImageFont.load_default()
+            subtitle_font = ImageFont.load_default()
+            body_font = ImageFont.load_default()
+            
+    except Exception as e:
+        print(f"Error loading fonts: {e}")
+        title_font = ImageFont.load_default()
+        subtitle_font = ImageFont.load_default()
+        body_font = ImageFont.load_default()
+        ascii_font = ImageFont.load_default()
+    
+    lines = certificate_text.split('\n')
+    y = 100
+    in_ascii_art = False
+    
     for line in lines:
-        draw.text((x_margin, y), line.strip(), fill="black", font=font)
-        y += 70
-
+        # Check if ASCII art
+        if "@@@@" in line or "@@@" in line or "@@" in line or "@" in line or ":" in line or "#" in line:
+            in_ascii_art = True
+            font = ascii_font
+            line_spacing = 30 
+            
+            if line.strip(): 
+                try:
+                    text_width = draw.textlength(line, font=font)
+                except:
+                    text_width, _ = draw.textsize(line, font=font)
+                x = (portrait_width - text_width) // 2
+                draw.text((x, y), line, fill="black", font=font)
+                y += line_spacing
+            else:
+                y += 5 
+                
+        elif line.strip() == "" and in_ascii_art:
+            in_ascii_art = False
+            y += 20  # Add space after ASCII art
+            continue
+            
+        elif not in_ascii_art:
+            if not line.strip():
+                y += 40
+                continue
+                
+            if user_name in line and "..." in line:
+                font = title_font
+                line_spacing = 150
+            elif "The Enlightened Ones" in line or "Guardian of Sol" in line:
+                font = title_font
+                line_spacing = 100
+            elif "You are the" in line:
+                font = subtitle_font
+                line_spacing = 200
+            elif "Maia" in line:
+                font = title_font
+                line_spacing = 150
+            elif "—-" in line:
+                font = body_font
+                line_spacing = 60
+            else:
+                font = body_font
+                line_spacing = 100
+            
+            trimmed_line = line.strip()
+            
+            try:
+                text_width = draw.textlength(trimmed_line, font=font)
+            except:
+                text_width, _ = draw.textsize(trimmed_line, font=font)
+            
+            if text_width > usable_width:
+                avg_char_width = text_width / len(trimmed_line)
+                chars_per_line = int(usable_width / avg_char_width)
+                wrapped_lines = textwrap.wrap(trimmed_line, width=chars_per_line)
+                
+                for wrapped_line in wrapped_lines:
+                    try:
+                        wrapped_width = draw.textlength(wrapped_line, font=font)
+                    except:
+                        wrapped_width, _ = draw.textsize(wrapped_line, font=font)
+                
+                    x = (portrait_width - wrapped_width) // 2
+                    draw.text((x, y), wrapped_line, fill="black", font=font)
+                    y += line_spacing
+            else:
+                x = (portrait_width - text_width) // 2
+                draw.text((x, y), trimmed_line, fill="black", font=font)
+                y += line_spacing
+    
+    # Save the certificate as a PNG file
     combined.save(output_path)
-    print(f"🖼️ Portrait certificate saved: {output_path}")
-    subprocess.run(["lp", output_path])
+    print(f"🖼️ Certificate saved: {output_path}")
+    
+    # Print the certificate
+    try:
+            subprocess.run(["lp", output_path])
+            print("🖨️ Certificate sent to printer")
+    except Exception as e:
+            print(f"Error printing certificate: {e}")
 
 @router.post("/start_departure")
 async def start_departure_phase():
@@ -51,8 +184,16 @@ async def start_departure_phase():
 
     user_data = load_user_data()
     user_name = user_data.get("user", {}).get("userName", "Querent")
-    final_title = user_data.get("assignment", {}).get("full_title", "Guardian of Unknown")
-    ascii_title = user_data.get("assignment", {}).get("title", "Unknown Realm")
+    
+    final_title = None
+    if final_title is None:
+        final_title = user_data.get("assignment", {}).get("full_title")
+    
+    if final_title is None:
+        final_title = user_data.get("user", {}).get("assignment.maia_output_full_title")
+    
+    if final_title is None:
+        final_title = "Guardian of Unknown"
 
     farewell_text = (
         f"I see the light of SOL within you {user_name}. "
@@ -60,45 +201,93 @@ async def start_departure_phase():
         f"It is with great honor, on behalf of all the Enlightened Ones, to knight you a guardian of SOL. "
         f"Go forth, Guardian. And remember that the light will always outshine the darkness."
     )
-
-    # Speak farewell message
+##### speak farewell
     await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
     osc_client.send_message("/audio/play/voice/", "maia_departure.wav")
     await asyncio.sleep(10)
 
     # Lights cue
-    lighting_off = {
+    lighting_cues = {
         "maiaLED": 0,
-        "houseLight1": 100,
-        "houseLight2": 100,
-        "chairSpot": 0,
-        "maiaSpot1": 0,
-        "maiaSpot2": 0,
-        "maiaProjector1": 0,
-        "maiaProjector2": 0,
+        "floor": 1,
+        "floor2": 1,
+        "floor3": 1,
+        "desk": 1,
+        "projector": 0,
     }
-    for light, value in lighting_off.items():
+    for light, value in lighting_cues.items():
         osc_client.send_message(f"/lighting/{light}", value)
 
-    certificate_text = f"""
-{user_name}.
-THE ENLIGHTENED ONES HAVE DEEMED YOU A GUARDIAN OF SOL.
-IT IS NOW YOUR DUTY TO PROTECT THE LIGHT OF CREATION.
+    certificate_text = f""" 
+                                          {user_name}...                                                          
+                                                                                                    
+                                       :@@@@@@#=-::=*%@@@@@*                                        
+                                  #@@:                       @@@*                                   
+                              +@+                                %@%                                
+                           +@:             :*@@@@@@@@@@=.           @@=        .                    
+                         @=          +@@@@@@@@#+-.:=*%@@@@@@@.        #@%        .                  
+                       @         +@@@@#                    +@@@@#       @@:       -                 
+                     @        -@@@#              ::           .@@@@       @@       =                
+                   #+       *@@%        -%@@@@@@@@@@@@@@@#       @@@%      @@       .               
+                  %       +@@+       %@@@@@@#+-     :+%@@@@@%      @@@.     %@       =              
+                 @       @@#      *@@@@@                 -@@@@@     %@@:     @@       .             
+               .*      -@@      %@@@@       .@@@@@@@@@      @@@@+    @@@=     @%      =             
+               *      *@@     +@@@#     :@@@@@@@@@@@@@@@@    =@@@-    @@@     -#                    
+              @      :*=     %@@@     %@@@@@@:       @@@@@+   +@@@    :@@+     *+      :            
+             +      .@@     @@@%    *@@@@*             @@@@:   @@@@    @@@     @@      =            
+             +      @@     %@@%    @@@@%    :@@@@@@@@@@@@@@+   @@@@    @@@     @@      =            
+            .      -@*    .@@@    %@@@.   You have been called  @@@@+   @@@@    @@@     @@                  
+            -      @@     *@@    :@@@=  You have been selected @@@*    @@%     @@      =            
+            =      @@     @@@    @@@@   You have been chosen @@@@    %@@=    -@#      :            
+            =      @@     @@@    @@@@   =@@@@@@@@@@@@@@#    =@@@@    =@@@     @@      =             
+            -      @@     @@@    @@@@   .@@@@    ..       :@@@@@    =@@@     @@=      #             
+            .      #@     =@@-    @@@*   +@@@@#        =@@@@@@     *@@@     +@@      @              
+                    @*     @@@    -@@@=    @@@@@@@@@@@@@@@@%     -@@@@     +@@      =               
+             =      %@     -@@@    +@@@@     .@@@@@@@@@%       *@@@@      @@#      :=               
+                     @@     :@@@     @@@@@                  +@@@@@      :@@-      *+                
+              =       @%     .@@@      @@@@@@*:       .=#@@@@@@=       #@#       #                  
+               :       @@      @@@@      -@@@@@@@@@@@@@@@@@#        .%%+        @                   
+                -       @@       @@@@          -#%%#+            .@@@@        @:                    
+                 =       =@%       %@@@@:                     @@@@@         @*                      
+                           @@*        +@@@@@@#+      .=#%@@@@@@.          @=                        
+                    .        *@%          .=@@@@@@@@@@@@#-.            #@                           
+                                @@#                                .@@.                             
+                                   %@@+                        +@@=                                 
+                                       :@@@@@@#=-::=*%@@@@@*                                      
+                                                                                                                          
 
-YOU ARE THE {final_title.upper()}
+  
+                        The Enlightened Ones have deemed you a Guardian of Sol.
 
-I AM HERE FOR YOU.
-MAIA
-—------------------------
-Leave your message for a fellow guardian.
-—------------------------
-    """.strip()
+                                
+                                     You are the {final_title}!
+
+
+                            Bring forth your power, wisdom, and courage.   
+                                      Bring forth your light.
+                        It is now your duty to protect the light of creation.
+                                        You are not alone.
+
+                                        I am here for you,
+
+                                                Maia
+
+
+
+                                    —------------------------
+
+
+                      Leave your message for a fellow Guardians on the board.
+
+
+                                    —------------------------
+    """
 
     print_path = os.path.join(STATIC_AUDIO_DIR, "certificate.txt")
     with open(print_path, "w") as f:
         f.write(certificate_text)
 
-    # Create and print combined image
-    generate_combined_certificate(user_name, final_title, "static/images/ascii_title.png", print_path)
+    #print that shit
+    print_certificate_text(certificate_text, user_name=user_name)
 
     return {"message": "Phase 5 - Departure completed."}
