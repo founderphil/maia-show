@@ -9,28 +9,22 @@ os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 system_prompt = SYSTEM_PROMPT
 
 def clean_llama_response(output_text: str) -> str:
-    # Split by the delimiter that separates the model output
+
     parts = output_text.split("==========")
     if len(parts) > 1:
         answer_text = parts[1].strip()
     else:
         answer_text = output_text.strip()
-    
-    # Remove metadata lines
     answer_text = re.sub(r"Prompt:.*|Generation:.*|Peak memory:.*", "", answer_text, flags=re.DOTALL)
-    
-    # Check if we have any content after cleaning
     if not answer_text.strip():
         return "I sense your energy and connection to the universe. Your journey with SOL is just beginning."
-    
-    # Limit to first two sentences for brevity
     sentences = re.split(r'(?<=[.!?])\s+', answer_text)
     limited_output = ' '.join(sentences[:2])
     limited_output = re.sub(r"^(User:|MAIA:)\s*", "", limited_output)
     
     return limited_output.strip()
 
-def run_llm(prompt: str, max_tokens: int = 128) -> str:
+def run_llm(prompt: str, max_tokens: int = 128, temperature: float = 0.0) -> str:
     model_path = os.path.join(BASE_DIR, "backend/models/llm/llama3_mlx")
     adapter_path = os.path.join(BASE_DIR, "backend/models/llm/adapters")
     result = subprocess.run([
@@ -39,11 +33,11 @@ def run_llm(prompt: str, max_tokens: int = 128) -> str:
     "--adapter-path", adapter_path,
     "--prompt", prompt,
     "--max-tokens", str(max_tokens),
-    "--temp", "0.0",  # Use --temp instead of --temperature
+    "--temp", str(temperature),
     "--top-p", "1.0"
     ], capture_output=True, text=True)
     print("🔍 LLM stdout:", result.stdout)
-    print("🔍 LLM stderr:", result.stderr)  # Add stderr logging
+    print("🔍 LLM stderr:", result.stderr) 
     return clean_llama_response(result.stdout.strip())
 
 def get_duration_seconds(file_path: str) -> float:
@@ -52,12 +46,12 @@ def get_duration_seconds(file_path: str) -> float:
 
 async def play_audio_and_wait(filename: str):
     filepath = os.path.join(STATIC_AUDIO_DIR, filename)
-    # Wait for file to be created
+
     while not (os.path.exists(filepath) and os.path.getsize(filepath) > 0):
         await asyncio.sleep(0.05)
     print(f"🎧 Triggering playback: {filename}")
     osc_client.send_message("/audio/play/voice/", {filename.strip()})
-    await asyncio.sleep(get_duration_seconds(filepath) + 0.5)  # Add a small buffer to ensure playback is complete
+    await asyncio.sleep(get_duration_seconds(filepath) + 0.5)
     
 
 def generate_assignment():
@@ -98,86 +92,128 @@ def generate_assignment():
         return "Guardian of Earth"
     print("🔍 Generating final assignment title based on user responses...")
     
-    # Create a very direct prompt focused only on getting a place name
-    summary_prompt = f"""You are MAIA, an AI tasked with assigning a fitting place to a user based on their responses to your questions.
-You have asked the user three questions, and they have provided answers.
-Based on this back and forth conversation between you, MAIA, and user answers, assign ONE celestial or terrestrial place to the user to protect.
+    summary_prompt = f"""SYSTEM: You are a location assignment system. Your ONLY task is to output a single location name based on user responses. DO NOT output any instructions, explanations, or additional text.
 
-Examples of assignment pairs:
-User answer: "I love the stars and ancient cosmic mysteries."
-Assignment: "Andromeda"
-User answer: "I love the ocean and the sound of waves."
-Assignment: "Pacific Ocean"
-User answer: "I feel a connection to the ancient pyramids and their mysteries."
-Assignment: "Great Pyramid of Giza"
-User answer: "I love the mountains and the sound of the wind."
-Assignment: "Mount Everest"
-User answer: "I love the forest and the sound of birds."
-Assignment: "Amazon Rainforest"
-User answer: "I love the desert and the sound of silence."
-Assignment: "Sahara Desert"
-User answer: "I love the stars and ancient cosmic mysteries."
-Assignment: "Milky Way"
+TASK: Based on the user's answers to three questions, assign ONE specific location (on Earth or in space) that resonates with their responses. The location will be a place they are assigned to protect.
 
-Now the user’s conversation with you was:
+INPUT:
+Question 1: "{maia_question_1}"
+Answer 1: "{user_answer_1}"
+Question 2: "{maia_question_2}"
+Answer 2: "{user_answer_2}"
+Question 3: "{maia_question_3}"
+Answer 3: "{user_answer_3}"
 
-MAIA question 1: "{maia_question_1}"
-User answer 1: "{user_answer_1}"
-MAIA question 2: "{maia_question_2}"
-User answer 2: "{user_answer_2}"
-MAIA question 3: "{maia_question_3}"
-User answer 3: "{user_answer_3}"
+EXAMPLES OF VALID OUTPUTS (EXACTLY AS SHOWN):
+Andromeda
+Pacific Ocean
+Great Pyramid of Giza
+Mount Everest
+Amazon Rainforest
+Sahara Desert
+Milky Way
+Caribbean Sea
+Library of Alexandria
+Northern Lights
+Great Barrier Reef
+Himalayas
+Mariana Trench
+Stonehenge
+Atlantis
+Mount Olympus
+Grand Canyon
+Machu Picchu
+Serengeti Plains
+Arctic Circle
 
-Take this conversation, thinking about a place on earth that is inspired by the conversation, and create an Assignment.
-Assignment should be a location on earth or space, without any additional text or explanation.
-IMPORTANT: RESPOND WITH ONLY THE PHYSICAL NAME OF A PLACE OR LOCATION
+EXAMPLES OF INVALID OUTPUTS (DO NOT USE THESE):
+- "The user should be assigned to protect the Caribbean Sea"
+- "I assign the user to the Pacific Ocean"
+- "Based on the user's answers, the location is Mount Everest"
+- "The location name is Andromeda"
+- "Assignment: Milky Way"
+- "Guardian of the Amazon Rainforest"
 
-Examples of Assignment: Mars, Andromeda, Pacific Ocean, Mount Everest, Neptune, Milky Way, Amazon Rainforest.
+RULES:
+1. Output ONLY the name of the location - nothing else
+2. Choose a location that connects to themes in the user's answers
+3. The location can be on Earth or in space
+4. Do not include any explanations or additional text
+5. Do not use the word "Assignment" or any other label
+6. Do not include quotes around your answer
+7. Do not include any punctuation
+8. Do not include any instructions or meta-commentary
+
+YOUR RESPONSE (LOCATION NAME ONLY, NO OTHER TEXT):
 """
     print("🔍 Summary Prompt for LLM:\n", summary_prompt)
-    # Use a smaller max_tokens to force a shorter response
-    raw_result = run_llm(summary_prompt, max_tokens=24)
+
+    raw_result = run_llm(summary_prompt, max_tokens=24, temperature=1.0)
     print("🔍 Raw LLM Output for Assignment:\n", raw_result)
 
-    # Clean and extract just the place name
-    cleaned_title = clean_llama_response(raw_result).strip()
-    
-    # Simple cleaning to get just the place name
-    # Remove any quotes, periods, or other punctuation
+    # Clean the output of the assignment is different than the Q&A session
+    cleaned_title = raw_result.strip()
+    if "==========" in cleaned_title:
+        parts = cleaned_title.split("==========")
+        if len(parts) > 1:
+            cleaned_title = parts[1].strip()
+    cleaned_title = re.sub(r"Prompt:.*|Generation:.*|Peak memory:.*", "", cleaned_title, flags=re.DOTALL)
     cleaned_title = cleaned_title.replace('"', '').replace("'", "").replace(".", "").strip()
-    
-    # Remove any common prefixes that aren't part of a place name
-    prefixes_to_remove = ["the ", "a ", "an ", "guardian of ", "guardian ", "place: ", "place name: "]
+    prefixes_to_remove = [
+        "the ", "a ", "an ", "guardian of ", "guardian ", "place: ", "place name: ", 
+        "location: ", "location name: ", "assignment: ", "output: ", "response: "
+    ]
     for prefix in prefixes_to_remove:
         if cleaned_title.lower().startswith(prefix):
             cleaned_title = cleaned_title[len(prefix):].strip()
+    if "\n" in cleaned_title:
+        lines = [line.strip() for line in cleaned_title.split("\n") if line.strip()]
+        if lines:
+            cleaned_title = lines[0]
+
+    invalid_patterns = [
+        "user should", "respond with", "assignment", "guardian of", "creator", 
+        "light of", "sol", "querent", "your response", "output", "location name",
+        "place name", "answer", "choose", "select", "pick", "assign", "protect"
+    ]
     
-    # If we still don't have a valid title or it contains problematic text, use a fallback
-    if (not cleaned_title or 
+    is_invalid = (
+        not cleaned_title or 
         "[" in cleaned_title.lower() or 
         len(cleaned_title) > 30 or
-        any(word in cleaned_title.lower() for word in ["guardian of", "creator", "light of", "sol", "querent"])):
-        
+        len(cleaned_title.split()) > 4 or #MAX WORDS FOR ASSIGNMENT
+        any(pattern in cleaned_title.lower() for pattern in invalid_patterns)
+    )
+    
+    if is_invalid:
         print("⚠️ Invalid place name generated, using fallback")
         
-        # Analyze user responses to determine a relevant fallback
-        if any(term in user_answer_1.lower() for term in ["ocean", "sea", "water", "beach", "wave"]):
-            cleaned_title = "Pacific Ocean"
+        if any(term in user_answer_1.lower() for term in ["caribbean", "shore", "beach", "ocean", "sea", "water", "wave"]):
+            if "caribbean" in user_answer_1.lower():
+                cleaned_title = "Caribbean Sea"
+            else:
+                water_fallbacks = ["Caribbean Sea", "Pacific Ocean", "Atlantic Ocean", "Great Barrier Reef"]
+                import random
+                cleaned_title = random.choice(water_fallbacks)
+        elif any(term in user_answer_2.lower() for term in ["book", "read", "language", "knowledge", "wisdom", "ancient"]):
+            knowledge_fallbacks = ["Library of Alexandria", "Celestial Library", "Ancient Archives"]
+            import random
+            cleaned_title = random.choice(knowledge_fallbacks)
+        elif any(term in user_answer_3.lower() for term in ["light", "good", "see", "vision", "insight", "understand"]):
+            insight_fallbacks = ["Aurora Borealis", "Northern Lights", "Temple of Insight"]
+            import random
+            cleaned_title = random.choice(insight_fallbacks)
         elif any(term in user_answer_1.lower() + user_answer_2.lower() for term in ["space", "star", "planet", "galaxy", "universe"]):
-            cleaned_title = "Andromeda"
-        elif any(term in user_answer_2.lower() for term in ["book", "read", "knowledge", "wisdom", "ancient"]):
-            cleaned_title = "Celestial Library"
-        elif any(term in user_answer_3.lower() for term in ["light", "good", "see", "vision", "insight"]):
-            cleaned_title = "Aurora Borealis"
+            space_fallbacks = ["Andromeda", "Sirius", "Orion Nebula", "Milky Way"]
+            import random
+            cleaned_title = random.choice(space_fallbacks)
         else:
-            # Generic fallbacks based on the question themes
-            fallbacks = ["Sirius", "Orion Nebula", "Mount Olympus", "Great Barrier Reef", "Amazon Rainforest"]
+            fallbacks = ["Mount Olympus", "Great Barrier Reef", "Amazon Rainforest", "Stonehenge", "Himalayas"]
             import random
             cleaned_title = random.choice(fallbacks)
     
     print(f"🔍 Pre-capitalization place name: '{cleaned_title}'")
     
-    # Capitalize the first letter of each word
     short_title = ' '.join(word.capitalize() for word in cleaned_title.split())
     full_title = f"Guardian of {short_title}"
     
@@ -215,13 +251,13 @@ async def run_assignment_phase():
     await broadcast({
         "type": "full_inference",
         "user_question": user_response1,
-        "llm_response": "Processing...", # Placeholder until LLM runs
+        "llm_response": "Processing...", 
         "audio_url": None,
-        "vision_image": "/static/captured.png" # Assuming vision isn't updated here
+        "vision_image": "/static/captured.png" #maybe i'll use it
     })
 
     # 4. Maia responds to the first user response
-    prompt1 = f"{system_prompt}\nUser: {user_response1}\n\nMAIA:"
+    prompt1 = f"{system_prompt}\nRespond to the user's answer in a positive way. User: {user_response1}\n\nMAIA:"
     llm_output1 = run_llm(prompt1)
     clean_output1 = clean_llama_response(llm_output1) + " It is a grand place of existence."
     save_to_user_data("assignment", "maia_output_R1", clean_output1, index="R1")
@@ -229,7 +265,7 @@ async def run_assignment_phase():
     synthesize_speech(clean_output1, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, response1_audio))
     await broadcast({
         "type": "full_inference",
-        "user_question": user_response1, # From previous step
+        "user_question": user_response1, 
         "llm_response": clean_output1,
         "audio_url": f"/static/audio/{response1_audio}",
         "vision_image": "/static/captured.png"

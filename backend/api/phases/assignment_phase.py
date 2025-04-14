@@ -10,6 +10,5 @@ async def start_assignment_phase():
     osc_client.send_message("/phase/assignment", 1)
 
     assignment = await run_assignment_phase()
-    print(f"🌍 Assigned: {assignment}")
 
     return {"message": "Assignment phase complete", "assignment": assignment}
