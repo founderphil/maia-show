@@ -267,11 +267,13 @@ export default function PostShowReview() {
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6">
-      <h1 className="text-3xl font-bold mb-2">Review Your Session Data</h1>
-      <p className="mb-4 text-gray-400">Select what you want to save to your profile.</p>
+      <h1 className="text-3xl font-bold mb-2">WELCOME TO FAIRYLAND</h1>
+      <p className="mb-4 text-gray-400">An Immersive Universe - game, film, & theater</p>
 
       {/* Authentication Section */}
       <div className="bg-gray-900 p-6 rounded-lg shadow-md w-full max-w-md mb-6">
+      <h2 className="text-2xl font-bold mb-2 text-center">Create an Account</h2>
+      <p className="mb-4 text-gray-400 text-center">Receive updates of when FAIRYLAND launches!</p>
         {user ? (
           <div className="text-center">
             <p className="mb-2">Logged in as: {user.email || "Anonymous User"}</p>
@@ -336,6 +338,11 @@ export default function PostShowReview() {
             </div>
           </div>
         )}
+      </div>
+      <div className="text-center">
+      <h2 className="text-2xl font-bold mb-2">Review Your Session Data</h2>
+      <p className="mb-4 text-gray-400">Select what interaction data you want to save to your profile.<br></br> Your interaction data enriches your FAIRYLAND experience.</p>
+      <p className="mb-4 text-gray-400"><u><a href="https://fairylandshow.com/privacy">Privacy Policy</a></u> & <u><a href="https://fairylandshow.com/terms">Terms of Use</a></u></p>
       </div>
 
       {/* Action Buttons - Moved above the data list */}
