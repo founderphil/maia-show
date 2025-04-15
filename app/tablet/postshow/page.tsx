@@ -17,7 +17,6 @@ export default function PostShowReview() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   useEffect(() => {
-    // Check if user is already logged in
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -27,22 +26,49 @@ export default function PostShowReview() {
 
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`/api/proxy?pathname=/users`, { method: "GET" });
-    
-        if (!response.ok) throw new Error("Failed to fetch user data");
-    
-        const data: Record<string, any> = await response.json();
-        console.log("Fetched user data:", data);
-    
-        if (data.user) {
-          setUserData(data.user);
-    
-          // default check all da boxes
-          const initialSelection = Object.keys(data.user).reduce(
-            (acc, key) => ({ ...acc, [key]: true }),
-            {}
-          );
-          setSelectedFields(initialSelection);
+        try {
+          const response = await fetch(`/api/proxy?pathname=/users`, { method: "GET" });
+          
+          if (response.ok) {
+            const data: Record<string, any> = await response.json();
+            console.log("Fetched user data:", data);
+            
+            if (data.user) {
+              setUserData(data.user);
+              
+              const initialSelection = Object.keys(data.user).reduce(
+                (acc, key) => ({ ...acc, [key]: true }),
+                {}
+              );
+              setSelectedFields(initialSelection);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (backendError) {
+          console.error("Backend server connection error:", backendError);
+        }
+        
+        const localUserData = localStorage.getItem('userData');
+        if (localUserData) {
+          try {
+            const parsedData = JSON.parse(localUserData);
+            console.log("Using local storage data:", parsedData);
+            
+            if (parsedData.user) {
+              setUserData(parsedData.user);
+              
+              const initialSelection = Object.keys(parsedData.user).reduce(
+                (acc, key) => ({ ...acc, [key]: true }),
+                {}
+              );
+              setSelectedFields(initialSelection);
+            }
+          } catch (parseError) {
+            console.error("Failed to parse local storage data:", parseError);
+          }
+        } else {
+          console.log("No user data found in local storage");
         }
       } catch (error) {
         console.error("Failed to fetch user data:", error);
@@ -53,7 +79,6 @@ export default function PostShowReview() {
 
     fetchUserData();
     
-    // Cleanup subscription
     return () => unsubscribe();
   }, []);
 
@@ -108,7 +133,6 @@ export default function PostShowReview() {
       const result = await signInAnon();
       
       if (result.error) {
-        // If anonymous auth fails, show a more user-friendly error
         if (result.error.includes("admin-restricted-operation")) {
           setAuthError("Anonymous login is not enabled. Please use email authentication.");
         } else {
@@ -125,9 +149,7 @@ export default function PostShowReview() {
 
   const saveUserDataToFirebase = async (dataToSave: Record<string, any>, saveType: 'full' | 'selected') => {
     try {
-      // Check if user is logged in
       if (!auth.currentUser) {
-        // Try anonymous sign in first
         try {
           console.log("Attempting anonymous sign in...");
           const result = await signInAnon();
@@ -141,11 +163,9 @@ export default function PostShowReview() {
           console.log("Anonymous sign in successful:", result.user.uid);
         } catch (anonError: any) {
           console.error("Anonymous sign in failed:", anonError);
-          // If anonymous auth fails, prompt for email sign in
           const shouldSignIn = confirm("You need to be signed in to save data. Would you like to sign in with email?");
           if (!shouldSignIn) return;
           
-          // Focus on email field and show a message
           setAuthError("Please enter your email and password to save your data");
           return;
         }
@@ -159,15 +179,14 @@ export default function PostShowReview() {
       console.log("Saving data for user:", userId);
       
       try {
-        // Define the Firestore collection and document path
         const usersCollection = collection(db, "users");
         const userDocRef = doc(usersCollection, userId);
 
-        // Add timestamp to the data
+
         const dataWithTimestamp = {
           ...dataToSave,
           timestamp: new Date().toISOString(),
-          user_id: userId, // Add user ID to the data for easier querying
+          user_id: userId, 
         };
 
         // Save the data to Firestore
@@ -187,7 +206,7 @@ export default function PostShowReview() {
           alert(`Failed to save ${saveType} profile: ${firestoreError.message}`);
         }
         
-        // Log detailed error for debugging
+        // debugging
         console.error("Detailed error:", {
           code: firestoreError.code,
           message: firestoreError.message,
@@ -226,32 +245,40 @@ export default function PostShowReview() {
   };
 
   const handleDeleteAll = async () => {
-    if (!confirm("Are you sure you want to delete all local data? This cannot be undone.")) return;
+    if (!confirm("Are you sure you want to delete all local data and generated audio? This cannot be undone.")) return;
 
     try {
-      // Delete from local backend
-      const res = await fetch("/api/proxy", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pathname: "/postshow/deleteAll" }),
-      });
-
-      const data = await res.json();
+      try {
+        const res = await fetch("/api/proxy", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pathname: "/postshow/deleteAll" }),
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          console.log("Backend delete response:", data);
+        }
+      } catch (backendError) {
+        console.error("Backend server connection error during delete:", backendError);
+      }
       
-      // Delete from Firebase if user is logged in
+      localStorage.removeItem('userData');
+      
       if (auth.currentUser) {
         const userId = auth.currentUser.uid;
         const userDocRef = doc(collection(db, "users"), userId);
         await deleteDoc(userDocRef);
-        alert("All data deleted (local and Firebase).");
+        alert("All data and generated audio deleted (local and Firebase).");
       } else {
-        alert("Local data deleted.");
+        alert("Local data and generated audio deleted.");
       }
       
       setUserData(null);
       setSelectedFields({});
     } catch (error) {
       console.error("Failed to delete user data:", error);
+      alert("There was an error deleting some data. Please try again.");
     }
   };
 
@@ -363,7 +390,7 @@ export default function PostShowReview() {
           onClick={handleDeleteAll} 
           className="border-2 border-red-500 px-4 py-2 rounded hover:bg-red-500 transition-colors"
         >
-          Delete All Data
+          Delete All Data & Audio
         </button>
       </div>
 
