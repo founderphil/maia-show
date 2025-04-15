@@ -100,14 +100,21 @@ def run_tts_in_process(generate_greeting=True, generate_welcome=True):
         from backend.config import STATIC_AUDIO_DIR
         os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
-        # Generate greeting 
-        if generate_greeting:
+        # Generate greeting and welcome concurrently if both requested
+        if generate_greeting and generate_welcome:
+            print("🎙️ Process: Generating greeting and welcome audio concurrently")
+            results = loop.run_until_complete(
+                asyncio.gather(
+                    tts_greeting(filename="maia_greeting.wav"),
+                    run_tts_only(filename="maia_output_welcome.wav")
+                )
+            )
+            print("✅ Process: Greeting and welcome audio generated")
+        elif generate_greeting:
             print("🎙️ Process: Generating greeting audio")
             greeting_result = loop.run_until_complete(tts_greeting(filename="maia_greeting.wav"))
             print("✅ Process: Greeting audio generated")
-        
-        # Generate welcome
-        if generate_welcome:
+        elif generate_welcome:
             print("🎙️ Process: Generating welcome audio")
             welcome_result = loop.run_until_complete(run_tts_only(filename="maia_output_welcome.wav"))
             print("✅ Process: Welcome audio generated")

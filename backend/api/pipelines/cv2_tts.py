@@ -43,8 +43,8 @@ async def run_cv2_tts():
     posture_comment = posture_comments.get(posture, "I am unsure if you are standing or sitting, but I sense you are present. Please, take a seat.")
 
     emotion_comments = {
-    "happy": f"You seem happy today, {user_name}. That brings joy to my heart.",
-    "sad": f"I sense sadness in you, {user_name}. If you wish to talk, I am here to listen.",
+    "happy": f"You appear happy today, {user_name}. That brings joy to my heart.",
+    "sad": f"I sense sadness in you, {user_name}. I am here to listen and find your light.",
     "neutral": f"I sense a calmness in you, {user_name}. A good place to start.",
     "angry": f"I feel your frustration, {user_name}. Perhaps a deep breath will help clear your mind?",
     "surprised": f"You look shocked! Do not be worried, {user_name}."
@@ -54,9 +54,9 @@ async def run_cv2_tts():
 
     # SIT DOWN
     tts_text = (
-        f"{user_name}. {emotion_comment} {posture_comment} "
-        "There is much we need to discuss." 
-        "The world is not how you know it. There is a larger conflict that started before time began."
+        f"{emotion_comment} {posture_comment} "
+        f"There is much we need to discuss."
+        f"The world is not how you know it. There is a larger conflict that started before time began."
     )
 
     print(f"🎙️ Generating speech for: {tts_text}")

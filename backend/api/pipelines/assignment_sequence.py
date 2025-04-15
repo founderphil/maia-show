@@ -231,7 +231,9 @@ async def run_assignment_phase():
     # 1. Maia introduces the assignment phase
     introduction_text = f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest, {user_name}."
     intro_audio = "maia_assignment_intro.wav"
-    synthesize_speech(text=introduction_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, intro_audio))
+    # Check if the file already exists (pre-generated during lore phase)
+    if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, intro_audio)):
+        synthesize_speech(text=introduction_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, intro_audio))
     await play_audio_and_wait(intro_audio)
 
 
@@ -239,7 +241,9 @@ async def run_assignment_phase():
     question1_text = "You are standing in a place where the universe breathes around you. Describe to me your favorite place in the universe."
     save_to_user_data("assignment", "maia_output_Q1", question1_text, index="Q1")
     question1_audio = "maia_assignment_Q1.wav"
-    #synthesize_speech(text=question1_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, question1_audio))
+    # Check if the file already exists (pre-generated during lore phase)
+    if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, question1_audio)):
+        synthesize_speech(text=question1_text, speaker_wav=SPEAKER_WAV, file_path=os.path.join(STATIC_AUDIO_DIR, question1_audio))
     await play_audio_and_wait(question1_audio)
 
     # 3. User responds to the first question
@@ -276,7 +280,9 @@ async def run_assignment_phase():
     question2_text = "You come across something ancient. What is it and what do you do?"
     save_to_user_data("assignment", "maia_output_Q2", question2_text, index="Q2")
     question2_audio = "maia_assignment_Q2.wav"
-    #synthesize_speech(question2_text, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, question2_audio))
+    # Check if the file already exists (pre-generated during lore phase)
+    if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, question2_audio)):
+        synthesize_speech(question2_text, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, question2_audio))
     await play_audio_and_wait(question2_audio)
 
     # 6. User responds to the second question
@@ -314,7 +320,9 @@ async def run_assignment_phase():
                       "What hidden spark within you does it reveal? What do you believe is your gift or talent?")
     save_to_user_data("assignment", "maia_output_Q3", question3_text, index="Q3")
     question3_audio = "maia_assignment_Q3.wav"
-    synthesize_speech(question3_text, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, question3_audio))
+    # Check if the file already exists (pre-generated during lore phase)
+    if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, question3_audio)):
+        synthesize_speech(question3_text, SPEAKER_WAV, os.path.join(STATIC_AUDIO_DIR, question3_audio))
     await play_audio_and_wait(question3_audio)
 
     # 9. User responds to the third question

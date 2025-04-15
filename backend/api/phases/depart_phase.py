@@ -202,11 +202,14 @@ async def start_departure_phase():
         f"Go forth, Guardian. And remember that the light will always outshine the darkness."
     )
 ##### speak farewell
-    await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
+    # Check if the file already exists (pre-generated during lore phase)
+    if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, "maia_departure.wav")):
+        await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
     osc_client.send_message("/audio/play/voice/", "maia_departure.wav")
     osc_client.send_message("/audio/play/music/", "full.mp3")
 
-    await asyncio.sleep(10)
+### i am sure there is a better way to fade out the music
+    await asyncio.sleep(20)
     osc_client.send_message("/audio/volume/", -12)
     await asyncio.sleep(2)
     osc_client.send_message("/audio/volume/", -24)
@@ -214,8 +217,6 @@ async def start_departure_phase():
     osc_client.send_message("/audio/volume/", -36)
     await asyncio.sleep(2)
     osc_client.send_message("/audio/volume/", -48)
-    await asyncio.sleep(2)
-
 
     # Lights cue
     lighting_cues = {
