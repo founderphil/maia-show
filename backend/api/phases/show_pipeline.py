@@ -1,5 +1,6 @@
 import asyncio
-from backend.api.phases.tablet_phase import start_tablet_phase
+from backend.api.pipelines.greetings_tts import tts_greeting
+from backend.api.pipelines.tts_only import run_tts_only
 from backend.api.phases.intro_phase import start_intro_phase
 from backend.api.phases.lore_phase import start_lore_phase
 from backend.api.phases.assignment_phase import start_assignment_phase
@@ -9,7 +10,11 @@ async def start_full_show():
     """Runs all phases sequentially."""
     print("🎬 Starting Full Show Run")
 
-    await start_tablet_phase()
+    # Run both TTS jobs concurrently (replaces start_tablet_phase)
+    await asyncio.gather(
+        tts_greeting(filename="maia_greeting.wav"),
+        run_tts_only(filename="maia_output_welcome.wav")
+    )
     await asyncio.sleep(2)  # Delay between phases
 
     await start_intro_phase()
