@@ -5,8 +5,8 @@ import sounddevice as sd
 import numpy as np 
 from backend.utils.utils import osc_client
 
-SILENCE_THRESHOLD = 0.01  # Adjust based on environment noise level
-SILENCE_DURATION = 1.5  # Stop recording after 1.5s of silence
+SILENCE_THRESHOLD = 0.17  # Adjust based on environment noise level
+SILENCE_DURATION = 3  # Stop recording after 1.5s of silence
 SAMPLE_RATE = 16000  # Sample rate for Vosk STT
 
 def download_and_extract_model(url: str, extract_to: str = "models"):
@@ -50,42 +50,68 @@ def transcribe_audio(audio_file_path: str) -> str:
     
     return result_text.strip()
 
-def record_audio(output_filename="temp.wav", max_duration=10):
-    """Records audio dynamically, stopping when silence is detected."""
+def record_audio(output_filename="temp.wav", max_duration=None):
+    """Records audio dynamically, stopping when silence is detected.
+    If max_duration is None, only silence detection will stop recording.
+    """
     print("🎙️ Listening... Speak now.")
-    osc_client.send_message("/lighting/MAIA/listening", 25)
+    osc_client.send_message("/lighting/maiaLEDmode", 1)
 
     recording = []
     silence_start = None
+    should_stop = [False]
+    has_spoken = [False]
 
     def callback(indata, frames, time, status):
         nonlocal silence_start
-        volume_norm = np.linalg.norm(indata) * 10  # Normalize volume
+        if should_stop[0]:
+            return
+
+        volume_norm = np.linalg.norm(indata) * 10
         recording.append(indata.copy())
 
-        # Check for silence
+        print(f"[DEBUG] volume_norm={volume_norm:.5f}, threshold={SILENCE_THRESHOLD}, silence_start={silence_start}, has_spoken={has_spoken[0]}")
+        if not has_spoken[0]:
+            if volume_norm >= SILENCE_THRESHOLD:
+                has_spoken[0] = True
+                print("[DEBUG] User has started speaking, enabling silence detection.")
+            return
+
+        # After user has spoken, enable silence detection
         if volume_norm < SILENCE_THRESHOLD:
             if silence_start is None:
                 silence_start = time.inputBufferAdcTime
+                print(f"[DEBUG] Silence started at {silence_start}")
             elif time.inputBufferAdcTime - silence_start > SILENCE_DURATION:
-                raise sd.CallbackStop  # Stop recording when silent
+                print(f"[DEBUG] Silence detected for {SILENCE_DURATION} seconds, stopping recording.")
+                should_stop[0] = True
+                silence_start = None
         else:
-            silence_start = None  # Reset silence timer
+            if silence_start is not None:
+                print(f"[DEBUG] Sound detected, resetting silence timer.")
+            silence_start = None
 
     try:
         with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, callback=callback):
-            sd.sleep(max_duration * 1000)  # Failsafe to avoid infinite recording
+            if max_duration is not None:
+                sd.sleep(max_duration * 1000)
+            else:
+                while not should_stop[0]:
+                    sd.sleep(100)
     except sd.CallbackStop:
-        pass  # Normal exit when silence is detected
-    
+        pass
+
+    print("[DEBUG] Exited recording loop, saving to file...")
     # Save to file
     recording = np.concatenate(recording, axis=0)
+    print(f"[DEBUG] Concatenated recording shape: {recording.shape}")
     with wave.open(output_filename, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(SAMPLE_RATE)
         wf.writeframes((recording * 32767).astype(np.int16).tobytes())
-    osc_client.send_message("/lighting/MAIA/listening", 255)
+    print("[DEBUG] Audio written to file, sending OSC message...")
+    osc_client.send_message("/lighting/maiaLEDmode", 2)
     print(f"✅ Recording saved: {output_filename}")
     return output_filename
 
