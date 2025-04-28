@@ -73,8 +73,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     await start_full_show() 
                 elif command == "pause":
                     print("⏸️ Pausing show, setting house lights to full.")
-                    osc_client.send_message("/lighting/houseLight", 1)
-                    osc_client.send_message("/lighting/houseLight", 1)
+                    osc_client.send_message("/lighting/maiaLEDmode", 0)
+                    osc_client.send_message("/lighting/floor", 1)
                     print("⏳ Waiting for 'play' to resume...")
                     await pause_event.wait() 
                     print("▶️ Resumed after pause.")
