@@ -30,7 +30,7 @@ async def run_cv2stt_llm_tts():
     audio_id = str(uuid.uuid4())
     audio_file = os.path.join(STATIC_AUDIO_DIR, f"temp_{audio_id}.wav")
 
-    record_audio(audio_file)
+    record_audio(audio_file, max_duration=None)
     user_question = transcribe_audio(audio_file)
     print("User said:", user_question)
 
