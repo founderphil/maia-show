@@ -26,7 +26,7 @@ async def start_intro_phase():
     await asyncio.sleep(1)  # Wait for the system to be ready
     print("Go Cue 2 - Lights, Maia Greeting, Play Music on low volume")
     lighting_cues = {
-        "maiaLED": 100,
+        "maiaLEDmode": 1,
         "floor": 1,
         "desk": 0,
         "projector": 0,
