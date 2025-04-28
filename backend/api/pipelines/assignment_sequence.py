@@ -248,7 +248,7 @@ async def run_assignment_phase():
 
     # 3. User responds to the first question
     user_audio1 = os.path.join(STATIC_AUDIO_DIR, f"temp_{uuid.uuid4()}.wav")
-    record_audio(user_audio1)
+    record_audio(user_audio1, max_duration=None)
     user_response1 = transcribe_audio(user_audio1)
     os.remove(user_audio1)
     save_to_user_data("assignment", "user_input_A1", user_response1, index="A1")
@@ -287,7 +287,7 @@ async def run_assignment_phase():
 
     # 6. User responds to the second question
     user_audio2 = os.path.join(STATIC_AUDIO_DIR, f"temp_{uuid.uuid4()}.wav")
-    record_audio(user_audio2)
+    record_audio(user_audio2, max_duration=None)
     user_response2 = transcribe_audio(user_audio2)
     os.remove(user_audio2)
     save_to_user_data("assignment", "user_input_A2", user_response2, index="A2")
@@ -327,7 +327,7 @@ async def run_assignment_phase():
 
     # 9. User responds to the third question
     user_audio3 = os.path.join(STATIC_AUDIO_DIR, f"temp_{uuid.uuid4()}.wav")
-    record_audio(user_audio3)
+    record_audio(user_audio3, max_duration=None)
     user_response3 = transcribe_audio(user_audio3)
     os.remove(user_audio3)
     save_to_user_data("assignment", "user_input_A3", user_response3, index="A3")
