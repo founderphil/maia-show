@@ -64,3 +64,10 @@ def get_wav_duration(file_path: str, fallback: float = 5.0) -> float:
     except Exception as e:
         print(f"⚠️ Error reading WAV duration: {e} (Path Tried: {absolute_path})")
         return fallback
+
+def set_user_name(name):
+    user_data = load_user_data()
+    user_data["userName"] = name
+    with open(USER_DATA_FILE, "w") as f:
+        json.dump(user_data, f, indent=4)
+    print(f"✅ Set userName in user_data.json: {name}")
