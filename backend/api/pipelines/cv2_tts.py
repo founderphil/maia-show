@@ -3,7 +3,6 @@ import json
 import asyncio
 from backend.models.stt_tts.tts import synthesize_speech
 from backend.models.vision.vision import capture_webcam_image, detect_vision
-from backend.utils.utils import broadcast
 from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, USER_DATA_FILE, STATIC_IMAGE_DIR
 
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
