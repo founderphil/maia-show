@@ -24,8 +24,10 @@ async def tts_greeting(tts_text: str = None, filename: str = "maia_greeting.wav"
     if tts_text is None:
         tts_text = (
             f"Welcome {user_name}."
-            f"I have been searching for you."
+            f"I have been searching for you." #waiting for you, where you are, and CTA to join this world.
             f"What's important now is that you are here."
+            f"You have discovered Professor Dupin's office. This is not by accident. You and the Professor have a lot in common. His research has opened a window across the universe. It is now your time to follow in his path."
+            f"You are the missing piece. Look to your left. Inscribe your name upon the metatron cube to unlock the way."
         )
 
     output_path = os.path.join(STATIC_AUDIO_DIR, filename)
