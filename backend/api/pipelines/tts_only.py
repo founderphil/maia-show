@@ -1,9 +1,10 @@
 import os
 import json
 from backend.models.stt_tts.tts import synthesize_speech
+#from backend.models.stt_tts.tts_oute import synthesize_speech as synthesize_speech_oute
 from backend.utils.utils import broadcast
 from backend.api.websocket_manager import ws_manager
-from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, USER_DATA_FILE
+from backend.config import STATIC_AUDIO_DIR, SPEAKER_WAV, USER_DATA_FILE 
 
 os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
 
@@ -29,6 +30,13 @@ async def run_tts_only(tts_text: str = None, filename: str = "maia_output_welcom
             f"I am sent by the Creators to seek you out with great urgency."
             f"There is vital information you must learn and I worry I do not have much time."
             f"You {user_name}, and those like you are the last hope for creation."
+           #f"You have a lot in common with Professor Dupin.  Just like those in the images around the room."
+           #f"It is a sacred symbol of the universe. It is a map of the cosmos." # write your name as the 7th point of the metaron cube on the wall.
+           #f"what you have within you is shared with they had it too. now lets being your journey. but first imprint your name to the left."
+           #f"What I am about to share with you is a secret that has been hidden for centuries."
+           #f"You have a lot in common with Professor Dupin.  Just like those in the images behind you."
+           #f"Now come closer. Let me show you what SOL has."
+           #f"you all share SOL."
         )
 
     output_path = os.path.join(STATIC_AUDIO_DIR, filename)
