@@ -202,33 +202,10 @@ async def start_departure_phase():
         f"Go forth, Guardian. And remember that the light will always outshine the darkness."
     )
 ##### speak farewell
-    # Check if the file already exists (pre-generated during lore phase)
     if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, "maia_departure.wav")):
         await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
     osc_client.send_message("/audio/play/voice/", "maia_departure.wav")
     osc_client.send_message("/audio/play/music/", "full.mp3")
-
-### i am sure there is a better way to fade out the music
-    await asyncio.sleep(20)
-    osc_client.send_message("/audio/volume/", -12)
-    await asyncio.sleep(2)
-    osc_client.send_message("/audio/volume/", -24)
-    await asyncio.sleep(2)
-    osc_client.send_message("/audio/volume/", -36)
-    await asyncio.sleep(2)
-    osc_client.send_message("/audio/volume/", -48)
-
-    # Lights cue
-    lighting_cues = {
-        "maiaLED": 0,
-        "floor": 1,
-        "floor2": 1,
-        "floor3": 1,
-        "desk": 1,
-        "projector": 0,
-    }
-    for light, value in lighting_cues.items():
-        osc_client.send_message(f"/lighting/{light}", value)
 
     certificate_text = f""" 
                                           {user_name}...                                                          
@@ -276,23 +253,22 @@ async def start_departure_phase():
 
 
                             Bring forth your power, wisdom, and courage.   
-                                      Bring forth your light.
-                        It is now your duty to protect the light of creation.
-                                        You are not alone.
 
-                                        I am here for you,
+                                      Bring forth your light.
+
+                        It is now your duty to protect the light of creation.
+
+                                        Others will join.
+
+
+                                        
+                                        I am here for you all,
 
                                                 Maia
 
 
 
-                                    —------------------------
 
-
-                      Leave your message for a fellow Guardians on the board.
-
-
-                                    —------------------------
     """
 
     print_path = os.path.join(STATIC_AUDIO_DIR, "certificate.txt")
@@ -301,7 +277,29 @@ async def start_departure_phase():
 
     #print that shit
     print_certificate_text(certificate_text, user_name=user_name)
-    
+
+### i am sure there is a better way to fade out the music
+    await asyncio.sleep(40)
+    osc_client.send_message("/audio/volume/", -12)
+    await asyncio.sleep(2)
+    osc_client.send_message("/audio/volume/", -24)
+    await asyncio.sleep(2)
+    osc_client.send_message("/audio/volume/", -36)
+    await asyncio.sleep(2)
+    osc_client.send_message("/audio/volume/", -48)
+
+    # Lights cue
+    lighting_cues = {
+        "maiaLEDmode": 0,
+        "floor": 1,
+        "floor2": 1,
+        "floor3": 1,
+        "desk": 1,
+        "projector": 0,
+    }
+    for light, value in lighting_cues.items():
+        osc_client.send_message(f"/lighting/{light}", value)
+
     #the show is now complete
     print("🌌 SHOW IS COMPLETE - CLICK RESTART")    
     return {"message": "Phase 5 - Departure completed."}
