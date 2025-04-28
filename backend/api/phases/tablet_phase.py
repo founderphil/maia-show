@@ -2,6 +2,7 @@ import asyncio, json, os, multiprocessing, sys
 from fastapi import APIRouter
 from backend.api.pipelines.tts_only import run_tts_only
 from backend.api.pipelines.greetings_tts import tts_greeting
+from backend.models.stt_tts.tts import TTSModel
 from backend.api.websocket_manager import ws_manager
 from backend.utils.utils import broadcast, save_to_user_data, osc_client
 from backend.config import USER_DATA_FILE, STATIC_AUDIO_DIR
@@ -44,12 +45,17 @@ async def reset_room():
     _tts_generation_in_progress = False
     _greeting_generated = False
     _welcome_generated = False
+
+    # Preload TTS model for the show
+    print("🔄 Preloading TTS model for show...")
+    TTSModel.get_instance()
+    print("✅ TTS model loaded and ready.")
     
 ######## RESET LIGHTS
     await asyncio.sleep(1)
     print("Go Cue 1 - Lights, Reset Tablet, Play Music")
     lighting_cues = {
-        "maiaLED": 0, # 0-255
+        "maiaLED": 0,  #mode 0 is off.
         "floor": 1,
         "desk": 1,
         "projector": 0,
@@ -64,107 +70,70 @@ async def reset_room():
     print("Room reset complete")
     return {"message": "Room Reset"}
 
-@router.post("/start_tablet")
-async def start_tablet_phase():
-    """Start the tablet phase and begin TTS generation in the background"""
-    global _tts_started
-    
-    print("🚀 Starting Show!")
-    
-    if _tts_started:
-        print("⚠️ TTS generation already started, skipping")
-        return {"message": "Tablet Phase Started (TTS already in progress)"}
-    _tts_started = True
-    
-    print("🎙️ Starting TTS generation for all audio files")
-    process = multiprocessing.Process(
-        target=run_tts_in_process,
-        args=(True, True)  
-    )
-    process.daemon = True
-    process.start()
-    
-    return {"message": "Tablet Phase Started"}
-
-def run_tts_in_process(generate_greeting=True, generate_welcome=True):
-
-    sys.path.append("/Users/phil/github/maia-show")
-    
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    # Run TTS - welcome and greeting
-    try:
-        from backend.api.pipelines.tts_only import run_tts_only
-        from backend.api.pipelines.greetings_tts import tts_greeting
-        from backend.config import STATIC_AUDIO_DIR
-        os.makedirs(STATIC_AUDIO_DIR, exist_ok=True)
-
-        # Generate greeting and welcome concurrently if both requested
-        if generate_greeting and generate_welcome:
-            print("🎙️ Process: Generating greeting and welcome audio concurrently")
-            results = loop.run_until_complete(
-                asyncio.gather(
-                    tts_greeting(filename="maia_greeting.wav"),
-                    run_tts_only(filename="maia_output_welcome.wav")
-                )
-            )
-            print("✅ Process: Greeting and welcome audio generated")
-        elif generate_greeting:
-            print("🎙️ Process: Generating greeting audio")
-            greeting_result = loop.run_until_complete(tts_greeting(filename="maia_greeting.wav"))
-            print("✅ Process: Greeting audio generated")
-        elif generate_welcome:
-            print("🎙️ Process: Generating welcome audio")
-            welcome_result = loop.run_until_complete(run_tts_only(filename="maia_output_welcome.wav"))
-            print("✅ Process: Welcome audio generated")
-    except Exception as e:
-        print(f"⚠️ Process: Error generating audio: {e}")
-    finally:
-        loop.close()
 
 _tts_generation_in_progress = False
 _greeting_generated = False
 _welcome_generated = False
 _tts_started = False 
 
+def run_tts_in_process():
+    import sys
+    sys.path.append("/Users/phil/github/maia-show")
+    import asyncio
+    from backend.api.pipelines.tts_only import run_tts_only
+    from backend.api.pipelines.greetings_tts import tts_greeting
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        print("🎙️ [multiprocessing] Running greeting and welcome TTS concurrently in subprocess")
+        loop.run_until_complete(
+            asyncio.gather(
+                tts_greeting(filename="maia_greeting.wav"),
+                run_tts_only(filename="maia_output_welcome.wav")
+            )
+        )
+        print("✅ [multiprocessing] Both greeting and welcome TTS completed in subprocess")
+    except Exception as e:
+        print(f"⚠️ [multiprocessing] Error in TTS subprocess: {e}")
+    finally:
+        loop.close()
+
 @router.post("/run_tablet_tts")
 async def run_tablet_tts():
     global _tts_started
-    
+
     print("🔊 Starting TTS generation asynchronously from 'Continue' button")
-    
+
     if _tts_started:
         print("⚠️ TTS generation already started, skipping")
         return {"message": "TTS generation already in progress"}
     _tts_started = True
-    
-    print("🎙️ Starting background TTS generation - this will take ~35 seconds but won't block the UI")
-    process = multiprocessing.Process(
-        target=run_tts_in_process,
-        args=(True, True) 
-    )
+
+    print("🎙️ [run_tablet_tts] Launching TTS as background process (will return immediately)")
+    process = multiprocessing.Process(target=run_tts_in_process)
     process.daemon = True
     process.start()
+    print("✅ [run_tablet_tts] TTS background process started, returning immediately")
 
     return {"message": "TTS generation started in background process"}
 
 
 @router.post("/activate")
 async def activate():
-    print("✨ User pressed Activate!")
-    
+    print("✨ [ACTIVATE] User pressed Activate! (should run immediately, not wait for TTS)")
+
     # Start playing audio IMMEDIATELY
     print("🔊 Playing vibrations.wav immediately")
     osc_client.send_message("/audio/volume/", -20) #turn down MUSIC track
     osc_client.send_message("/audio/play/sfx/", "vibrations.wav")
-    
+
     ws_message = {
         "type": "activation_success",
         "phase": "tablet",
         "message": "Activation successful"
     }
-    
+
     try:
         print("📡 Sending WebSocket Message:", ws_message)
         await ws_manager.broadcast(ws_message)
@@ -176,27 +145,30 @@ async def activate():
         await ws_manager.broadcast(phase_message)
     except Exception as e:
         print(f"⚠️ WebSocket Broadcast Error: {e}")
-    
+
+    # This task runs in the background and should NOT block the response
     asyncio.create_task(continue_activation_audio_sequence())
-    
+
+    print("✅ [ACTIVATE] Returning immediately from /activate (not waiting for TTS)")
     return {"success": True, "message": "Activation successful"}
 
 
 def generate_missing_audio_files():
     global _tts_started
-    
+
     if _tts_started:
         print("⚠️ TTS generation already started")
         return
     _tts_started = True
-    
-    print("🎙️ Starting TTS generation for both greeting and welcome")
-    process = multiprocessing.Process(
-        target=run_tts_in_process,
-        args=(True, True)
+
+    print("🎙️ Starting TTS generation for both greeting and welcome (main process)")
+    # Directly run TTS jobs concurrently in main process
+    asyncio.create_task(
+        asyncio.gather(
+            tts_greeting(filename="maia_greeting.wav"),
+            run_tts_only(filename="maia_output_welcome.wav")
+        )
     )
-    process.daemon = True
-    process.start()
 
 async def continue_activation_audio_sequence():
     try:
@@ -273,7 +245,7 @@ async def queue_welcome_audio():
                 if timeout % 5 == 0: 
                     print(f"⏳ Still waiting for welcome audio file to be created... ({timeout}s)")
         
-        print("📊 Waiting for welcome audio file to be fully written...")
+        print("� Waiting for welcome audio file to be fully written...")
         last_size = -1
         stable_count = 0
         while stable_count < 2:
