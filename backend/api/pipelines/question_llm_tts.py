@@ -41,7 +41,7 @@ def run_llm(prompt: str) -> str:
 async def handle_question(question_key: str, response_key: str, output_filename: str, suffix: str = ""):
     # Record + transcribe
     audio_path = os.path.join(STATIC_AUDIO_DIR, f"{uuid.uuid4()}.wav")
-    record_audio(audio_path)
+    record_audio(audio_path, max_duration=None)
     question_text = transcribe_audio(audio_path)
 
     # Run LLM
