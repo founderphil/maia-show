@@ -92,7 +92,7 @@ def detect_posture(image):
             print(f"  Right Hip Angle: {right_hip_angle:.2f}")
             print(f"  Avg Hip Angle: {avg_hip_angle:.2f}")
 
-            if avg_hip_angle <= 155 <= 20: # hugely important number to get right. seems standing has not gone below 158.0, straight on is 170+
+            if avg_hip_angle <= 155: # hugely important number to get right. seems standing has not gone below 158.0, straight on is 170+
                 return "Sitting"
             else:
                 return "Standing"
