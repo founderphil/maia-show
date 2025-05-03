@@ -5,7 +5,7 @@ import sounddevice as sd
 import numpy as np 
 from backend.utils.utils import osc_client
 
-SILENCE_THRESHOLD = 0.17  # Adjust based on environment noise level
+SILENCE_THRESHOLD = 0.5  # Adjust based on environment noise level
 SILENCE_DURATION = 3  # Stop recording after 1.5s of silence
 SAMPLE_RATE = 16000  # Sample rate for Vosk STT
 
@@ -111,7 +111,8 @@ def record_audio(output_filename="temp.wav", max_duration=None):
         wf.setframerate(SAMPLE_RATE)
         wf.writeframes((recording * 32767).astype(np.int16).tobytes())
     print("[DEBUG] Audio written to file, sending OSC message...")
-    osc_client.send_message("/lighting/maiaLEDmode", 2)
+    osc_client.send_message("/lighting/maiaLEDmode", 2) #thinking light
+    osc_client.send_message("/audio/play/sfx/", "vibrations.wav") #thinking sound
     print(f"✅ Recording saved: {output_filename}")
     return output_filename
 
