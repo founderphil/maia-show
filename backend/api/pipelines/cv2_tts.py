@@ -36,7 +36,7 @@ async def run_cv2_tts():
     print(f"👁️ Detected Emotion: {emotion}, Posture: {posture}")
 
     posture_comments = {
-        "Sitting": "Ah, you are seated. You are ready to listen.",
+        "Sitting": "Ah, you are seated. Remain comfortable.",
         "Standing":  "I see you are standing. Would you like to take a seat and get comfortable?",
     }
     posture_comment = posture_comments.get(posture, "I am unsure if you are standing or sitting, but I sense you are present. Please, take a seat.")
