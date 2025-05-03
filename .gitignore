@@ -61,3 +61,8 @@ dev.env
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+static/audio/greeting.pkf
+backend/models/vision/captured_landmarks.png
+static/images/certificate_print.log
+test_assignment.py
+test_llm.py
