@@ -36,8 +36,8 @@ async def run_cv2_tts():
     print(f"👁️ Detected Emotion: {emotion}, Posture: {posture}")
 
     posture_comments = {
-        "Standing": "I see you are standing. Would you like to take a seat and get comfortable?",
-        "sitting": "Ah, you are seated. That means you're ready to listen.",
+        "Sitting": "Ah, you are seated. You are ready to listen.",
+        "Standing":  "I see you are standing. Would you like to take a seat and get comfortable?",
     }
     posture_comment = posture_comments.get(posture, "I am unsure if you are standing or sitting, but I sense you are present. Please, take a seat.")
 
@@ -84,3 +84,6 @@ async def run_cv2_tts():
         print("📡 Sending WebSocket Message:", ws_message)
 
     return ws_message
+
+if __name__ == "__main__":
+    asyncio.run(run_cv2_tts())
