@@ -28,7 +28,7 @@ async def start_intro_phase():
     lighting_cues = {
         "maiaLEDmode": 1,
         "floor": 1,
-        "desk": 0,
+        "desk": 1, #off
         "projector": 0,
     }
     for light, value in lighting_cues.items():
