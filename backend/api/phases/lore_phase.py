@@ -29,21 +29,21 @@ async def pregenerate_assignment_audio(user_name):
     await run_tts_only(tts_text=intro_text, filename="maia_assignment_intro.wav")
     total_time += time.monotonic() - t0
 
-    q1_text = "You are standing in a place where the universe breathes around you. Describe to me your favorite place in the universe."
-    t0 = time.monotonic()
-    await run_tts_only(tts_text=q1_text, filename="maia_assignment_Q1.wav")
-    total_time += time.monotonic() - t0
+   # q1_text = "You are standing in a place where the universe breathes around you. Describe to me your favorite place in the universe."
+   # t0 = time.monotonic()
+   # await run_tts_only(tts_text=q1_text, filename="maia_assignment_Q1.wav")
+   # total_time += time.monotonic() - t0
 
-    q2_text = "You come across something ancient. What is it and what do you do?"
-    t0 = time.monotonic()
-    await run_tts_only(tts_text=q2_text, filename="maia_assignment_Q2.wav")
-    total_time += time.monotonic() - t0
+   # q2_text = "You come across something ancient. What is it and what do you do?"
+   # t0 = time.monotonic()
+   # await run_tts_only(tts_text=q2_text, filename="maia_assignment_Q2.wav")
+   # total_time += time.monotonic() - t0
 
-    q3_text = ("Tell me, when the universe listens to the quiet murmur of your soul. "
-              "What hidden spark within you does it reveal? What do you believe is your gift or talent?")
-    t0 = time.monotonic()
-    await run_tts_only(tts_text=q3_text, filename="maia_assignment_Q3.wav")
-    total_time += time.monotonic() - t0
+   # q3_text = ("Tell me, when the universe listens to the quiet murmur of your soul. "
+   #           "What hidden spark within you does it reveal? What do you believe is your gift or talent?")
+   # t0 = time.monotonic()
+   # await run_tts_only(tts_text=q3_text, filename="maia_assignment_Q3.wav")
+   # total_time += time.monotonic() - t0
 
     return total_time
 
@@ -51,11 +51,11 @@ async def pregenerate_assignment_audio(user_name):
 async def pregenerate_farewell_audio(user_name):
     import time
     farewell_text = (
-        f"I see the light of SOL within you {user_name}. "
-        f"Your talents shine through you like a neutron star. "
+        f"I see the light of SOL within you {user_name}."
+        f"Your talents shine through you like a neutron star."
         f"It is with great honor, on behalf of all the Enlightened Ones, to knight you a guardian of SOL."
-        f"To your right I am creating for you a small token of our appreciation to take with you."
-        f"Now, go forth, Guardian! Find your seven. And remember, the light will always outshine the darkness."
+        f"In the printing device you will find your assignment. Take it with you. It is a key for a future quest."
+        f"Now, go forth, Guardian! Find your seven. And remember  {user_name}, the light will always outshine the darkness."
     )
     t0 = time.monotonic()
     await run_tts_only(tts_text=farewell_text, filename="maia_departure.wav")
@@ -80,11 +80,12 @@ async def start_lore_phase():
 
     # Scripted welcome TTS
     scripted_text = (
-        f"And now that battle to protect the last remnants of SOL comes to you. "
         f"I come to you {user_name} and ask you to protect the light. "
         f"A guardianship, passed on from The Enlightened Ones. "
         f"Before you take up this higher calling. What questions do you have for me, {user_name}?"
     )
+
+    osc_client.send_message("/audio/volume/", -50)
 
     # Start TTS generation for lore Q intro
     lore_tts_task = create_task(run_tts_only(tts_text=scripted_text, filename="maia_lore_Q_intro.wav"))
@@ -106,7 +107,7 @@ async def start_lore_phase():
         # calc total TTS processing time
         assignment_audio_time = await assignment_audio_task
         farewell_audio_time = await farewell_audio_task
-        total_tts_processing_time = assignment_audio_time + farewell_audio_time
+        total_tts_processing_time = assignment_audio_time + farewell_audio_time - 2
         print(f"🕒 Assignment TTS time: {assignment_audio_time:.2f}s, Farewell TTS time: {farewell_audio_time:.2f}s, Total: {total_tts_processing_time:.2f}s")
 
         # Calculate wait_time
@@ -147,7 +148,7 @@ async def start_lore_phase():
 
     print("✨ Entering Lore Q&A Phase")
     await run_question_sequence()
-
+    osc_client.send_message("/audio/volume/", -15)
     await start_assignment_phase() #GOTO 10. Assignment phase
     await asyncio.sleep(2)  
     return {"message": "Phase 3 - Lore Phase with Q&A Completed"}

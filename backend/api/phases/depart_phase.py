@@ -173,10 +173,16 @@ def print_certificate_text(certificate_text, user_name=None, output_path="static
     
     # Print the certificate
     try:
-            subprocess.run(["lp", output_path])
-            print("🖨️ Certificate sent to printer")
+        with open("static/images/certificate_print.log", "a") as logf:
+            logf.write(f"Attempting to print: {output_path}\n")
+        subprocess.run(["lp", output_path])
+        with open("static/images/certificate_print.log", "a") as logf:
+            logf.write("🖨️ Certificate sent to printer\n")
+        print("🖨️ Certificate sent to printer")
     except Exception as e:
-            print(f"Error printing certificate: {e}")
+        with open("static/images/certificate_print.log", "a") as logf:
+            logf.write(f"Error printing certificate: {e}\n")
+        print(f"Error printing certificate: {e}")
 
 @router.post("/start_departure")
 async def start_departure_phase():
@@ -279,6 +285,7 @@ async def start_departure_phase():
     print_certificate_text(certificate_text, user_name=user_name)
 
 ### i am sure there is a better way to fade out the music
+    osc_client.send_message("/lighting/maiaLEDmode", 1)
     await asyncio.sleep(40)
     osc_client.send_message("/audio/volume/", -12)
     await asyncio.sleep(2)
@@ -294,7 +301,7 @@ async def start_departure_phase():
         "floor": 1,
         "floor2": 1,
         "floor3": 1,
-        "desk": 1,
+        "desk": 0, #on
         "projector": 0,
     }
     for light, value in lighting_cues.items():
