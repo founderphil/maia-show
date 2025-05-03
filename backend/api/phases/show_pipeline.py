@@ -10,11 +10,9 @@ async def start_full_show():
     """Runs all phases sequentially."""
     print("🎬 Starting Full Show Run")
 
-    # Run both TTS jobs concurrently (replaces start_tablet_phase)
-    await asyncio.gather(
-        tts_greeting(filename="maia_greeting.wav"),
-        run_tts_only(filename="maia_output_welcome.wav")
-    )
+    # Run TTS jobs sequentially: greeting first, then welcome
+    await tts_greeting(filename="maia_greeting.wav")
+    await run_tts_only(filename="maia_output_welcome.wav")
     await asyncio.sleep(2)  # Delay between phases
 
     await start_intro_phase()
