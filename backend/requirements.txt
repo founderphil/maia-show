@@ -7,3 +7,11 @@ httpx
 pyfiglet
 Pillow
 TTS
+requests
+numpy
+vosk
+sounddevice
+opencv-python
+mediapipe
+fer
+transformers
