@@ -200,7 +200,7 @@ export default function ShowrunnerUI() {
               {llmResponse || "Waiting for MAIA response..."}
             </div>
             {audioUrl && (
-              <audio controls autoPlay className="w-full mt-4">
+              <audio controls className="w-full mt-4"> {/* removed autoPlay */}
                 <source src={audioUrl} type="audio/wav" />
               </audio>
             )}

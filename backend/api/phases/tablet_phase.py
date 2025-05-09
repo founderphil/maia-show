@@ -122,6 +122,8 @@ async def activate():
     osc_client.send_message("/lighting/desk", 0)
     await asyncio.sleep(0.1)
     osc_client.send_message("/lighting/desk", 1)
+    await asyncio.sleep(0.1)
+    osc_client.send_message("/lighting/desk", 0) #flicker to back on
     
 
     ws_message = {
@@ -212,7 +214,7 @@ async def continue_activation_audio_sequence():
         if os.path.exists(greeting2_path):
             greeting2_duration = get_wav_duration(greeting2_path)
             print(f"ℹ️ greeting.wav duration: {greeting2_duration:.1f}s")
-        await asyncio.sleep(greeting2_duration)
+        await asyncio.sleep(greeting2_duration + 2)
 
         asyncio.create_task(queue_welcome_audio())
 
@@ -226,7 +228,7 @@ async def queue_welcome_audio():
 
         # Wait for welcome audio to be ready, then play immediately
         timeout = 0
-        max_wait = 60
+        max_wait = 80
         while not os.path.exists(welcome_path) and timeout < max_wait:
             print(f"⏳ Waiting for welcome audio file to be created... ({timeout}/{max_wait}s)")
             await asyncio.sleep(1)

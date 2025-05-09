@@ -5,7 +5,7 @@ import sounddevice as sd
 import numpy as np 
 from backend.utils.utils import osc_client
 
-SILENCE_THRESHOLD = 0.5  # Adjust based on environment noise level
+SILENCE_THRESHOLD = 10.0  # Adjust based on environment noise level
 SILENCE_DURATION = 3  # Stop recording after 1.5s of silence
 SAMPLE_RATE = 16000  # Sample rate for Vosk STT
 
@@ -54,7 +54,8 @@ def record_audio(output_filename="temp.wav", max_duration=None):
     """Records audio dynamically, stopping when silence is detected.
     If max_duration is None, only silence detection will stop recording.
     """
-    print("🎙️ Listening... Speak now.")
+    print("🎙️ Listening... Speak now.") 
+    osc_client.send_message("/audio/volume/", -50)
     osc_client.send_message("/lighting/maiaLEDmode", 1)
 
     recording = []

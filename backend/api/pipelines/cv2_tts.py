@@ -53,9 +53,19 @@ async def run_cv2_tts():
 
     # SIT DOWN
     tts_text = (
-        f"{emotion_comment} {posture_comment} "
+       f"{emotion_comment} {posture_comment} "
         f"There is much we need to discuss."
         f"The world is not how you know it. There is a larger conflict that started before time began."
+
+    #    if i need to generate python3 -m backend.api.pipelines.cv2_tts
+    #    f"Welcome Querent, I am Maia. Guardian of soul."
+    #    f"You have uncovered a portal to a world of creation and destruction."
+    #    f"Before the first breath of time, there was only Creation."
+    #    f"A force beyond form, a radiant harmony, birthing light, birthing life. And within all life, the Seed of Creation was placed."
+    #    f"it is the source of all things, SOL. For an eternity, Creation flourished, untouched by shadow. Until the Destroyers beheld the light."
+    #    f"Their hunger to claim dominion over all existence sparked an endless war across the universe between creation and destruction."
+    #    f"We, guardians of Creation, The Enlightened Ones, resisted. The Whisperers, agents of the Destroyers, sought to destroy the light but the light endured."
+    #    f"For as long as SOL burns within humanity, the battle for creation will never be lost. And now that battle to protect the last remnants of SOL comes to you"
     )
 
     print(f"🎙️ Generating speech for: {tts_text}")

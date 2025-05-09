@@ -24,7 +24,10 @@ async def pregenerate_assignment_audio(user_name):
     set_user_name(user_name)
     total_time = 0.0
 
-    intro_text = f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest, {user_name}."
+    intro_text = (
+        f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest, {user_name}."
+        f"I wish to ask you three questions. Your responses reveal your connection to the universe and your sacred role as a guardian of SOL."
+    )
     t0 = time.monotonic()
     await run_tts_only(tts_text=intro_text, filename="maia_assignment_intro.wav")
     total_time += time.monotonic() - t0
@@ -51,10 +54,11 @@ async def pregenerate_assignment_audio(user_name):
 async def pregenerate_farewell_audio(user_name):
     import time
     farewell_text = (
-        f"I see the light of SOL within you {user_name}."
-        f"Your talents shine through you like a neutron star."
+        f"Your responses show the light of SOL within you {user_name}."
+        f"Your potential shine through you like a neutron star."
         f"It is with great honor, on behalf of all the Enlightened Ones, to knight you a guardian of SOL."
-        f"In the printing device you will find your assignment. Take it with you. It is a key for a future quest."
+        f"In the printing device you will find your sacred assignment. Take it with you. It is a key for a future quest."
+        f"Protect your sacred assignment by keeping it close to your heart"
         f"Now, go forth, Guardian! Find your seven. And remember  {user_name}, the light will always outshine the darkness."
     )
     t0 = time.monotonic()
@@ -70,7 +74,10 @@ async def start_lore_phase():
     osc_client.send_message("/phase/lore", 1)
 
     print("Play Lore Movie!")
-    osc_client.send_message("/video/play/", "Maia_Lore_cut.mp4")
+    osc_client.send_message("/lighting/desk", 1) #lights off
+    osc_client.send_message("/audio/play/music/", "instrumental.wav")
+    #osc_client.send_message("/video/play/", "Maia_Lore_cut.mp4") #live performance vs generated
+    osc_client.send_message("/video/play/", "generated_vo_lore.mp4")
     patricia_path = os.path.join(STATIC_AUDIO_DIR, "Lore_Audio.wav")
     lore_duration = get_wav_duration(patricia_path)
     print("🔊 Playing THE LORE STORY VIDEO in MAX MSP, next generate inference...")
@@ -80,12 +87,12 @@ async def start_lore_phase():
 
     # Scripted welcome TTS
     scripted_text = (
-        f"I come to you {user_name} and ask you to protect the light. "
-        f"A guardianship, passed on from The Enlightened Ones. "
+        f"I come to you {user_name} and ask you to protect the light."
+        f"A guardianship, passed on from The Enlightened Ones."
         f"Before you take up this higher calling. What questions do you have for me, {user_name}?"
     )
 
-    osc_client.send_message("/audio/volume/", -50)
+    osc_client.send_message("/audio/volume/", -20)
 
     # Start TTS generation for lore Q intro
     lore_tts_task = create_task(run_tts_only(tts_text=scripted_text, filename="maia_lore_Q_intro.wav"))
@@ -111,7 +118,7 @@ async def start_lore_phase():
         print(f"🕒 Assignment TTS time: {assignment_audio_time:.2f}s, Farewell TTS time: {farewell_audio_time:.2f}s, Total: {total_tts_processing_time:.2f}s")
 
         # Calculate wait_time
-        wait_time = max(lore_duration - total_tts_processing_time, 2)
+        wait_time = max(lore_duration - total_tts_processing_time - 10, 2)
         print(f"⏳ Waiting {wait_time} seconds for lore video to finish (adjusted for TTS)...")
         await asyncio.sleep(wait_time)
     else:

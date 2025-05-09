@@ -13,12 +13,49 @@ export default function TabletUI() {
     newAudio.loop = true;
     newAudio.volume = 1;
     setAudio(newAudio);
-
+  
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        if (!userName.trim()) {
+          alert("Please enter a name.");
+          return;
+        }
+  
+        try {
+          const response = await fetch("/api/proxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pathname: "/save_user",
+              body: { userName },
+            }),
+          });
+  
+          const result = await response.json();
+          console.log("User saved:", result);
+  
+          fetch("/api/proxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pathname: "/run_tablet_tts" }),
+          }).catch((err) => console.error("Background TTS failed:", err));
+  
+          sessionStorage.setItem("userName", userName);
+          router.push("/tablet/color");
+        } catch (error) {
+          console.error("Failed to save user:", error);
+        }
+      }
+    };
+  
+    window.addEventListener("keydown", handleKeyDown);
+  
     return () => {
       newAudio.pause();
       newAudio.currentTime = 0;
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [userName]);
 
   const handlePlayAudio = () => {
     if (audio) {

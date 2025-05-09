@@ -113,7 +113,6 @@ Amazon Rainforest
 Sahara Desert
 Milky Way
 Caribbean Sea
-Library of Alexandria
 Northern Lights
 Great Barrier Reef
 Himalayas
@@ -196,7 +195,7 @@ YOUR RESPONSE (LOCATION NAME ONLY, NO OTHER TEXT):
                 import random
                 cleaned_title = random.choice(water_fallbacks)
         elif any(term in user_answer_2.lower() for term in ["book", "read", "language", "knowledge", "wisdom", "ancient"]):
-            knowledge_fallbacks = ["Library of Alexandria", "Celestial Library", "Ancient Archives"]
+            knowledge_fallbacks = ["Library of Congress", "Celestial Library of 51 Pegasi b", "The Lost Sethian Archives"]
             import random
             cleaned_title = random.choice(knowledge_fallbacks)
         elif any(term in user_answer_3.lower() for term in ["light", "good", "see", "vision", "insight", "understand"]):
@@ -229,7 +228,10 @@ async def run_assignment_phase():
     user_name = user_data.get("user", {}).get("userName", "Querent")
 
     # 1. Maia introduces the assignment phase
-    introduction_text = f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest, {user_name}."
+    introduction_text = (
+    f"Revealing SOL does not come easily for humanity, but I believe you are worthy of this quest, {user_name}."
+    f"I wish to ask you three questions. Your responses reveal your connection to the universe and your sacred role as a guardian of SOL."
+    ) 
     intro_audio = "maia_assignment_intro.wav"
     # Check if the file already exists (pre-generated during lore phase)
     if not os.path.exists(os.path.join(STATIC_AUDIO_DIR, intro_audio)):
@@ -261,7 +263,7 @@ async def run_assignment_phase():
     })
 
     # 4. Maia responds to the first user response
-    prompt1 = f"{system_prompt}\nRespond to the user's answer in a positive way. User: {user_response1}\n\nMAIA:"
+    prompt1 = f"{system_prompt}\nRespond to the user's answer in a positive and insightful way. User: {user_response1}\n\nMAIA:"
     llm_output1 = run_llm(prompt1)
     clean_output1 = clean_llama_response(llm_output1) + " It is a grand place of existence."
     save_to_user_data("assignment", "maia_output_R1", clean_output1, index="R1")
@@ -300,7 +302,7 @@ async def run_assignment_phase():
     })
 
     # 7. Maia responds to the second user response
-    prompt2 = f"{system_prompt}\nUser: {user_response2}\n\nMAIA:"
+    prompt2 = f"{system_prompt}\nRespond to the user's answer in a positive and insightful way. User: {user_response2}\n\nMAIA:"
     llm_output2 = run_llm(prompt2)
     clean_output2 = clean_llama_response(llm_output2) + " And now a final question."
     save_to_user_data("assignment", "maia_output_R2", clean_output2, index="R2")
@@ -340,7 +342,7 @@ async def run_assignment_phase():
     })
 
     # 10. Maia responds to the third user response
-    prompt3 = f"{system_prompt}\nUser: {user_response3}\n\nMAIA:"
+    prompt3 = f"{system_prompt}\nRespond to the user's answer in a positive and insightful way. User: {user_response3}\n\nMAIA:"
     llm_output3 = run_llm(prompt3)
     clean_output3 = clean_llama_response(llm_output3) + " This noble work is the light you need to continue to spread throughout. This comes from your SOL and makes you exceptional. Continue to spread that light!"
     save_to_user_data("assignment", "maia_output_R3", clean_output3, index="R3")

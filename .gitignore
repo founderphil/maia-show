@@ -6,6 +6,8 @@
 
 # ignore large video
 Maia_Lore_cut.mp4
+generated_vo_lore.mp4
+*.pkf
 
 #User Data files
 *.wav

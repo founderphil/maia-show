@@ -63,8 +63,8 @@ def print_certificate_text(certificate_text, user_name=None, output_path="static
             if os.path.exists(font_path):
                 try:
                     title_font = ImageFont.truetype(font_path, 58)
-                    subtitle_font = ImageFont.truetype(font_path, 50)
-                    body_font = ImageFont.truetype(font_path, 42)
+                    subtitle_font = ImageFont.truetype(font_path, 46)
+                    body_font = ImageFont.truetype(font_path, 38)
                     regular_font_loaded = True
                     print(f"Regular fonts loaded successfully from {font_path}")
                     break
@@ -126,10 +126,10 @@ def print_certificate_text(certificate_text, user_name=None, output_path="static
                 font = title_font
                 line_spacing = 150
             elif "The Enlightened Ones" in line or "Guardian of Sol" in line:
-                font = title_font
-                line_spacing = 100
-            elif "You are the" in line:
                 font = subtitle_font
+                line_spacing = 200
+            elif "You are the" in line:
+                font = title_font
                 line_spacing = 200
             elif "Maia" in line:
                 font = title_font
@@ -187,7 +187,7 @@ def print_certificate_text(certificate_text, user_name=None, output_path="static
 @router.post("/start_departure")
 async def start_departure_phase():
     print("🌌 Phase 5: Departure")
-
+    osc_client.send_message("/audio/volume/", -20)
     user_data = load_user_data()
     user_name = user_data.get("user", {}).get("userName", "Querent")
     
